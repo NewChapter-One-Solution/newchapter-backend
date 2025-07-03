@@ -1,0 +1,209 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider        = "prisma-client-js"
+  output          = "../generated/prisma"
+  previewFeatures = ["fullTextSearchPostgres"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+enum Role {
+  ADMIN
+  MANAGER
+  STAFF
+}
+
+enum Department {
+  SALES
+  MARKETING
+  FINANCE
+  MANAGEMENT
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LATE
+  ON_LEAVE
+  HALF_DAY
+}
+
+// MODELS
+
+// model User {
+//   id             String       @id @default(uuid())
+//   email          String       @unique
+//   firstName      String
+//   lastName       String?
+//   hashedPassword String
+//   role           Role         @default(STAFF)
+//   isActive       Boolean?     @default(true)
+//   shopId         String?
+//   joinDate       String?
+//   department     Department?  @default(SALES)
+//   shop           Shop?        @relation(fields: [shopId], references: [id])
+//   attendances    Attendance[]
+//   createdAt      DateTime     @default(now())
+//   updatedAt      DateTime     @updatedAt
+// }
+
+// model Shop {
+//   id        String   @id @default(uuid())
+//   name      String
+//   location  String
+//   ownerId   String?
+//   attendees String[]
+//   // weeklyOffs WeeklyOff[]
+//   User      User[]
+// }
+
+model Shop {
+  id        String   @id @default(uuid())
+  name      String
+  location  String
+  ownerId   String?
+  attendees User[]   @relation("ShopAttendees") 
+  User      User[] // other users (e.g., employees assigned via shopId)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model User {
+  id             String       @id @default(uuid())
+  email          String       @unique
+  firstName      String
+  lastName       String?
+  hashedPassword String
+  role           Role         @default(STAFF)
+  isActive       Boolean?     @default(true)
+  shopId         String?
+  joinDate       String?
+  department     Department?  @default(SALES)
+  shop           Shop?        @relation(fields: [shopId], references: [id])
+  attendances    Attendance[]
+  shopsAttended  Shop[]       @relation("ShopAttendees") 
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Attendance {
+  id          String            @id @default(uuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id])
+  date        DateTime          @default(now())
+  checkIn     DateTime?
+  checkOut    DateTime?
+  isCheckedIn Boolean?          @default(false)
+  status      AttendanceStatus? @default(PRESENT)
+  workedHours Float?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  @@unique([userId, date])
+}
+
+model Warehouses {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  location    String
+  capacity    Int?
+  minCapacity Int?
+  maxCapacity Int?
+  createdBy   String? //user id
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Products Products[]
+
+  // Inventory Inventory[]
+}
+
+model Category {
+  id       String     @id @default(uuid())
+  name     String
+  slug     String?    @unique
+  parentId String? // Nullable for top-level categories
+  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children Category[] @relation("CategoryHierarchy")
+
+  createdBy String?
+
+  products  Products[] // One-to-many with Product
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model Products {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  slug        String?  @unique
+  price       Float
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  color       String?
+  size        String?
+
+  createdBy String?
+
+  // warehouseId String
+  // warehouse   Warehouses @relation(fields: [warehouseId], references: [id])
+  suppliersId String?
+  Suppliers   Suppliers? @relation(fields: [suppliersId], references: [id])
+
+  // Inventory Inventory[]
+}
+
+model Suppliers {
+  id       String   @id @default(uuid())
+  name     String
+  email    String?
+  phone    String
+  address  String?
+  website  String?
+  isActive Boolean? @default(true)
+  gstid    String   @unique
+
+  createdBy String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  Products Products[]
+}
+
+// model Inventory {
+//   id        String @id @default(uuid())
+//   productId String
+//   quantity  Int
+
+//   warehouseId String
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+
+//   product   Products   @relation(fields: [productId], references: [id])
+//   warehouse Warehouses @relation(fields: [warehouseId], references: [id])
+// }
+
+// model Leave {
+//   id          String     @id @default(uuid())
+//   userId      String
+//   user        User       @relation(fields: [userId], references: [id])
+//   startDate   DateTime
+//   endDate     DateTime
+//   type        LeaveType
+//   status      LeaveStatus
+//   reason      String?
+//   createdAt   DateTime   @default(now())
+// }

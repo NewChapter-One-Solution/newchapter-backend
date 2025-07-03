@@ -1,0 +1,19 @@
+
+node_modules
+dist
+.vscode
+.DS_Store
+.env
+*.log
+
+# Ignore build artifacts
+build
+
+/generated/prisma
+
+/src/generated/prisma
+
+
+/generated/prisma
+
+/generated/prisma
