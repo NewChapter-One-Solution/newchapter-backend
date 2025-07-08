@@ -9,6 +9,7 @@ import supplierRouter from "./suppliers";
 import attendanceRouter from "./attendence";
 import shopRouter from "./shops";
 import employeeRouter from "./employees";
+import productRouter from "./products";
 
 const router = Router();
 
@@ -22,5 +23,6 @@ router.use("/suppliers", supplierRouter);
 router.use("/attendence", attendanceRouter);
 router.use("/shops", shopRouter);
 router.use("/employees", employeeRouter);
+router.use("/products", productRouter);
 
 export default router;

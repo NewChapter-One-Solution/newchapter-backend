@@ -11,6 +11,7 @@ const app: Application = express();
 app.use(cors({ origin: corsUrl, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static("uploads"));
 app.use(passport.initialize());
 
 //test route
