@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as warehouseController from "../controllers/warehouseController";
-import jwtAuthMiddleware from "../core/jwtMiddleware";
+import jwtAuthMiddleware from "../middleware/jwtMiddleware";
 const warehouseRouter = Router();
 
 warehouseRouter.route("/").post(jwtAuthMiddleware, warehouseController.createWarehouse)

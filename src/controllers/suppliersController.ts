@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { Suppliers } from "../../generated/prisma";
-import prisma from "../db/prisma-client";
-import asyncHandler from "../helpers/asyncHandler";
-import CustomError from "../helpers/CustomError";
-import { UserPayload } from "../interfaces/jwtInterface";
+import prisma from "../models/prisma-client";
+import asyncHandler from "../utils/asyncHandler";
+import CustomError from "../utils/CustomError";
+import { UserPayload } from "../types/jwtInterface";
 import { ISupplier } from "../interfaces/supplierInterface";
 import { paginate } from "../utils/paginatedResponse";
 

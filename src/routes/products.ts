@@ -1,15 +1,41 @@
 import { Router } from "express";
 
 import * as productController from "../controllers/productsController";
-import jwtAuthMiddleware from "../core/jwtMiddleware";
-import { singleUpload } from "../core/multer";
+import jwtAuthMiddleware from "../middleware/jwtMiddleware";
+import { singleUpload } from "../middleware/multer";
+import { requirePermissions, PERMISSIONS } from "../middleware/rbacMiddleware";
 
 const productRouter = Router();
 
-productRouter.route("/").post(jwtAuthMiddleware, singleUpload, productController.createProduct);
-productRouter.route("/").get(jwtAuthMiddleware, productController.getAllProducts);
-productRouter.route("/:id").get(jwtAuthMiddleware, productController.getProductBy);
-productRouter.route("/:id").put(jwtAuthMiddleware, singleUpload, productController.updateProduct);
-productRouter.route("/:id").delete(jwtAuthMiddleware, productController.deleteProduct);
+// All routes require authentication
+productRouter.use(jwtAuthMiddleware);
+
+productRouter
+  .route("/")
+  .post(
+    requirePermissions([PERMISSIONS.PRODUCT_CREATE]),
+    singleUpload,
+    productController.createProduct
+  )
+  .get(
+    requirePermissions([PERMISSIONS.PRODUCT_READ]),
+    productController.getAllProducts
+  );
+
+productRouter
+  .route("/:id")
+  .get(
+    requirePermissions([PERMISSIONS.PRODUCT_READ]),
+    productController.getProductBy
+  )
+  .put(
+    requirePermissions([PERMISSIONS.PRODUCT_UPDATE]),
+    singleUpload,
+    productController.updateProduct
+  )
+  .delete(
+    requirePermissions([PERMISSIONS.PRODUCT_DELETE]),
+    productController.deleteProduct
+  );
 
 export default productRouter;

@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import prisma from "../db/prisma-client";
-import asyncHandler from "../helpers/asyncHandler";
-import CustomError from "../helpers/CustomError";
-import { UserPayload } from "../interfaces/jwtInterface";
+import prisma from "../models/prisma-client";
+import asyncHandler from "../utils/asyncHandler";
+import CustomError from "../utils/CustomError";
+import { UserPayload } from "../types/jwtInterface";
 import { paginate } from "../utils/paginatedResponse";
 
 export const getAllWarehouses = asyncHandler(async (req: Request, res: Response) => {

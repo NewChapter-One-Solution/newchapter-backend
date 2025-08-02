@@ -1,7 +1,8 @@
-import prisma from "../db/prisma-client";
-import asyncHandler from "../helpers/asyncHandler";
+import prisma from "../models/prisma-client";
+import asyncHandler from "../utils/asyncHandler";
 import { Request, Response } from "express";
-import { UserPayload } from "../interfaces/jwtInterface";
+import { UserPayload } from "../types/jwtInterface";
+import CustomError from "../utils/CustomError";
 
 export const checkIn = asyncHandler(async (req: Request, res: Response) => {
     const userId = (req.user as UserPayload)?.id || "system"; // Assuming req.user is set by authentication middleware
@@ -78,25 +79,37 @@ export const reportById = asyncHandler(async (req: Request, res: Response) => {
     const { userId } = req.params;
     const { start, end } = req.query;
 
+    if (!userId) throw new CustomError("User ID is required", 400);
+    if (!start || !end) throw new CustomError("Start and end dates are required", 400);
+
+    const startDate = new Date(start as string);
+    const endDate = new Date(end as string);
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        throw new CustomError("Invalid date format", 400);
+    }
+
     const logs = await prisma.attendance.findMany({
         where: {
             userId,
             date: {
-                gte: new Date(start as string),
-                lte: new Date(end as string),
+                gte: startDate,
+                lte: endDate,
             },
         },
-        orderBy: { date: 'asc' },
+        orderBy: { date: "asc" },
     });
 
-    res.json(
-        logs.map((a) => ({
+    res.status(200).json({
+        success: true,
+        message: "Attendance report retrieved successfully",
+        data: logs.map((a) => ({
             date: a.date.toISOString().split("T")[0],
             status: a.status,
             checkIn: a.checkIn,
             checkOut: a.checkOut,
             hours: a.workedHours,
-        }))
-    );
+        })),
+    });
 });
+
 

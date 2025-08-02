@@ -1,10 +1,10 @@
 import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions } from 'passport-jwt';
 import passport from 'passport';
 // import { IUser, UserModel } from '../models/user.model';
-import prisma from '../db/prisma-client';
+import prisma from '../models/prisma-client';
 import { User } from '../../generated/prisma';
-import { tokenInfo } from '../secrets';
-import { UserPayload } from '../interfaces/jwtInterface';
+import { tokenInfo } from './secrets';
+import { UserPayload } from '../types/jwtInterface';
 
 const opts: StrategyOptions = {
     jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
