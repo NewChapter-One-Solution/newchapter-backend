@@ -537,23 +537,4 @@ This project is licensed under the ISC License - see the [LICENSE](LICENSE) file
 - Authentication with [Passport.js](http://www.passportjs.org/)
 - File uploads with [Cloudinary](https://cloudinary.com/)
 
-## 📧 Automated Low Stock Notifications
-
-The system includes intelligent inventory monitoring with email alerts:
-
-- **🕘 Daily Monitoring**: Automatic checks at 9:00 AM
-- **📊 Smart Thresholds**: Alerts when inventory ≤ 10 items  
-- **👥 Role-Based Notifications**: Managers and owners get relevant alerts
-- **📧 Professional Emails**: Rich HTML templates with detailed stock information
-- **🏪 Multi-Shop Support**: Shop-specific notifications for managers
-
-**Quick Setup:**
-1. Add email configuration to `.env` file
-2. Restart server to activate cron job
-3. Test with: `POST /api/v1/admin/trigger-low-stock-check`
-
-See **[Low Stock Notification Guide](LOW_STOCK_NOTIFICATION_GUIDE.md)** for complete setup instructions.
-
----
-
 **Happy coding! 🛋️💼**
