@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import asyncHandler from "../utils/asyncHandler";
 import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
-import { Role } from "../../generated/prisma";
+import { Role } from "@prisma/client";
 
 export const getDashboardStats = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {

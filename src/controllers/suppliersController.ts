@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Suppliers } from "../../generated/prisma";
+import { Suppliers } from "@prisma/client";
 import prisma from "../models/prisma-client";
 import asyncHandler from "../utils/asyncHandler";
 import CustomError from "../utils/CustomError";
