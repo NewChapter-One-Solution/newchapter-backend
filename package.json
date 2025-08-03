@@ -5,7 +5,6 @@
   "scripts": {
     "start": "node dist/src/server.js",
     "start:dev": "nodemon",
-    "dev": "nodemon",
     "build": "tsc",
     "postbuild": "npm run prisma:generate",
     "prestart": "npm run build",

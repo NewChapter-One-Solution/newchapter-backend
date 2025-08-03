@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
 import asyncHandler from "../utils/asyncHandler";
-import { Category } from "../../generated/prisma";
+import { Category } from "@prisma/client";
 import { ICategory } from "../interfaces/categoriesInterfaces";
 import { UserPayload } from "../types/jwtInterface";
 import { paginate } from "../utils/paginatedResponse";

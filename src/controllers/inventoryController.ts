@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import asyncHandler from "../utils/asyncHandler";
 import prisma from "../models/prisma-client";
-import { Inventory } from "../../generated/prisma";
+import { Inventory } from "@prisma/client";
 import { paginate } from "../utils/paginatedResponse";
 import CustomError from "../utils/CustomError";
 

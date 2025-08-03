@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import asyncHandler from "../utils/asyncHandler";
 import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
-import { Products } from "../../generated/prisma";
+import { Products } from "@prisma/client";
 import { UserPayload } from "../types/jwtInterface";
 import {
   deleteImageFromCloudnary,
