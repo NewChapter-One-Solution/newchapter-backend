@@ -1,5 +1,5 @@
 import nodemailer, { Transporter } from 'nodemailer';
-import { mailConfig } from '../secrets';
+import { mailConfig } from './secrets';
 
 
 export let transporter: Transporter = nodemailer.createTransport({

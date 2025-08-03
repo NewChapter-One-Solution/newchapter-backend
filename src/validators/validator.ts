@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { ZodError, ZodSchema } from "zod";
-import CustomError from "./CustomError";
+import CustomError from "../utils/CustomError";
 export enum ValidationSource {
   BODY = "body",
   QUERY = "query",

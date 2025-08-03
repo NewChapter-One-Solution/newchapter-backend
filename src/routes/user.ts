@@ -1,13 +1,16 @@
 import { Router } from "express";
 import * as userController from "../controllers/userController";
-import jwtAuthMiddleware from "../core/jwtMiddleware";
-
+import jwtAuthMiddleware from "../middleware/jwtMiddleware";
+import { requirePermissions, PERMISSIONS } from "../middleware/rbacMiddleware";
 
 const userRouter = Router();
 
-userRouter.route("/me").get(jwtAuthMiddleware, userController.getUser);
-userRouter.route("/").get(jwtAuthMiddleware, userController.getAllUsers);
-userRouter.route("/update-role").post(jwtAuthMiddleware, userController.updateUserRole);
-userRouter.route("/change-password").post(jwtAuthMiddleware, userController.changePassword);
+// All routes require authentication
+userRouter.use(jwtAuthMiddleware);
+
+// Essential user functionality for inventory management
+userRouter.get("/me", userController.getUser);
+userRouter.get("/", requirePermissions([PERMISSIONS.USER_READ]), userController.getAllUsers);
+userRouter.post("/change-password", userController.changePassword);
 
 export default userRouter;

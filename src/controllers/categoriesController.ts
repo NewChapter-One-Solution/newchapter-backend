@@ -1,24 +1,27 @@
 import { Request, Response } from "express";
-import CustomError from "../helpers/CustomError";
-import prisma from "../db/prisma-client";
-import asyncHandler from "../helpers/asyncHandler";
+import CustomError from "../utils/CustomError";
+import prisma from "../models/prisma-client";
+import asyncHandler from "../utils/asyncHandler";
 import { Category } from "../../generated/prisma";
 import { ICategory } from "../interfaces/categoriesInterfaces";
-import { UserPayload } from "../interfaces/jwtInterface";
+import { UserPayload } from "../types/jwtInterface";
 import { paginate } from "../utils/paginatedResponse";
 
 export const createCategory = asyncHandler(async (req: Request, res: Response) => {
-    const { name, parentId } = req.body;
+    const { name, parentId, slug } = req.body;
 
     if (!name) throw new CustomError("Category name is required", 400);
 
     const createdBy = (req.user as UserPayload)?.id || "system";
 
+
+
     const category: Category = await prisma.category.create({
         data: {
             name,
             parentId: parentId || null, // null for top-level
-            createdBy
+            createdBy,
+            slug: slug || name.toLowerCase().replace(/\s+/g, '-'), // generate slug from name
         },
     });
 
@@ -57,10 +60,10 @@ export const getAllCategories = asyncHandler(async (req: Request, res: Response)
         categories,
         meta: {
             count: categories.length,
-            page,
-            limit,
+            page: Number(page),
+            limit: Number(limit),
             totalPages: Math.ceil(total / Number(limit)),
-            totalItems: total
+            totalitems: total
         }
     };
 

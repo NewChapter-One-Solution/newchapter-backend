@@ -29,6 +29,26 @@ enum Department {
   MANAGEMENT
 }
 
+enum PaymentMode {
+  CASH
+  CARD
+  UPI
+  OTHER
+}
+
+enum PurchaseStatus {
+  PENDING
+  RECEIVED
+  RETURNED
+}
+
+enum StockChangeType {
+  PURCHASE_IN
+  SALE_OUT
+  RETURN_TO_SUPPLIER
+  MANUAL_ADJUSTMENT
+}
+
 enum AttendanceStatus {
   PRESENT
   ABSENT
@@ -37,44 +57,21 @@ enum AttendanceStatus {
   HALF_DAY
 }
 
-// MODELS
-
-// model User {
-//   id             String       @id @default(uuid())
-//   email          String       @unique
-//   firstName      String
-//   lastName       String?
-//   hashedPassword String
-//   role           Role         @default(STAFF)
-//   isActive       Boolean?     @default(true)
-//   shopId         String?
-//   joinDate       String?
-//   department     Department?  @default(SALES)
-//   shop           Shop?        @relation(fields: [shopId], references: [id])
-//   attendances    Attendance[]
-//   createdAt      DateTime     @default(now())
-//   updatedAt      DateTime     @updatedAt
-// }
-
-// model Shop {
-//   id        String   @id @default(uuid())
-//   name      String
-//   location  String
-//   ownerId   String?
-//   attendees String[]
-//   // weeklyOffs WeeklyOff[]
-//   User      User[]
-// }
-
+// MODELs
 model Shop {
   id        String   @id @default(uuid())
   name      String
   location  String
   ownerId   String?
-  attendees User[]   @relation("ShopAttendees") 
+  attendees User[]   @relation("ShopAttendees")
   User      User[] // other users (e.g., employees assigned via shopId)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  Inventory Inventory[]
+  Purchase  Purchase[]
+  StockLog  StockLog[]
+  Sales     Sales[]
 }
 
 model User {
@@ -90,9 +87,11 @@ model User {
   department     Department?  @default(SALES)
   shop           Shop?        @relation(fields: [shopId], references: [id])
   attendances    Attendance[]
-  shopsAttended  Shop[]       @relation("ShopAttendees") 
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  shopsAttended  Shop[]       @relation("ShopAttendees")
+
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 }
 
 model Attendance {
@@ -122,9 +121,8 @@ model Warehouses {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  // Products Products[]
-
-  // Inventory Inventory[]
+  Inventory Inventory[]
+  Products  Products[]
 }
 
 model Category {
@@ -143,26 +141,32 @@ model Category {
 }
 
 model Products {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  slug        String?  @unique
-  price       Float
-  categoryId  String
-  category    Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  color       String?
-  size        String?
+  id           String   @id @default(uuid())
+  name         String
+  description  String?
+  slug         String?  @unique
+  price        String
+  categoryId   String
+  imageDetails Json?
+  category     Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  color        String?
+  size         String?
+  material     String?
+  weight       String?
 
   createdBy String?
 
-  // warehouseId String
-  // warehouse   Warehouses @relation(fields: [warehouseId], references: [id])
   suppliersId String?
   Suppliers   Suppliers? @relation(fields: [suppliersId], references: [id])
 
-  // Inventory Inventory[]
+  Inventory    Inventory[]
+  PurchaseItem PurchaseItem[]
+  StockLog     StockLog[]
+  SaleItem     SaleItem[]
+  Warehouses   Warehouses?    @relation(fields: [warehousesId], references: [id])
+  warehousesId String?
 }
 
 model Suppliers {
@@ -181,29 +185,125 @@ model Suppliers {
   updatedAt DateTime @updatedAt
 
   Products Products[]
+  Purchase Purchase[]
 }
 
-// model Inventory {
-//   id        String @id @default(uuid())
-//   productId String
-//   quantity  Int
+model Inventory {
+  id        String @id @default(uuid())
+  productId String
+  shopId    String
 
-//   warehouseId String
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
+  quantity Int @default(0)
 
-//   product   Products   @relation(fields: [productId], references: [id])
-//   warehouse Warehouses @relation(fields: [warehouseId], references: [id])
-// }
+  warehouseId String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
-// model Leave {
-//   id          String     @id @default(uuid())
-//   userId      String
-//   user        User       @relation(fields: [userId], references: [id])
-//   startDate   DateTime
-//   endDate     DateTime
-//   type        LeaveType
-//   status      LeaveStatus
-//   reason      String?
-//   createdAt   DateTime   @default(now())
-// }
+  shop      Shop       @relation(fields: [shopId], references: [id])
+  product   Products   @relation(fields: [productId], references: [id])
+  warehouse Warehouses @relation(fields: [warehouseId], references: [id])
+
+  @@unique([shopId, productId])
+}
+
+model Purchase {
+  id           String         @id @default(uuid())
+  shopId       String
+  shop         Shop           @relation(fields: [shopId], references: [id])
+  supplierId   String
+  Suppliers    Suppliers      @relation(fields: [supplierId], references: [id])
+  purchaseDate DateTime       @default(now())
+  totalAmount  Float
+  status       PurchaseStatus @default(PENDING) // PENDING, RECEIVED, RETURNED
+
+  purchaseItems PurchaseItem[]
+
+  createdBy String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PurchaseItem {
+  id          String @id @default(uuid())
+  purchaseId  String
+  productId   String
+  quantity    Int
+  unitPrice   Float
+  receivedQty Int    @default(0)
+  returnedQty Int    @default(0)
+
+  product  Products @relation(fields: [productId], references: [id])
+  purchase Purchase @relation(fields: [purchaseId], references: [id])
+
+  @@unique([purchaseId, productId])
+}
+
+model StockLog {
+  id         String          @id @default(uuid())
+  productId  String
+  shopId     String
+  changeType StockChangeType
+  quantity   Int
+  reason     String?
+  createdAt  DateTime        @default(now())
+
+  product Products @relation(fields: [productId], references: [id])
+  shop    Shop     @relation(fields: [shopId], references: [id])
+}
+
+model Customer {
+  id      String  @id @default(uuid())
+  name    String
+  phone   String
+  email   String?
+  address String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  Sales     Sales[]
+}
+
+model Sales {
+  id          String      @id @default(uuid())
+  shopId      String
+  customerId  String
+  saleDate    DateTime    @default(now())
+  totalAmount Float
+  paymentMode PaymentMode
+  invoiceNo   String      @unique
+
+  shop      Shop       @relation(fields: [shopId], references: [id])
+  customer  Customer   @relation(fields: [customerId], references: [id])
+  saleItems SaleItem[]
+}
+
+model SaleItem {
+  id        String @id @default(uuid())
+  saleId    String
+  productId String
+  quantity  Int
+  unitPrice Float
+
+  sale    Sales    @relation(fields: [saleId], references: [id])
+  product Products @relation(fields: [productId], references: [id])
+}
+
+model Comments {
+  id        String @id @default(uuid())
+  productId String
+  comment   String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @db.Text
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+
+  @@index([userId])
+}

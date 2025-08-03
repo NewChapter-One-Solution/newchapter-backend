@@ -2,139 +2,142 @@ import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
 import jwt from "jsonwebtoken";
 // import QRCode from 'qrcode';
-// import { sendEmail } from "../config/nodeMailer"
-// import EmailVerificationModel from "../models/emailVarification.model"
+
 import { IPayload, IToken } from "../interfaces/authInterface";
-import { tokenInfo } from "../secrets";
+import { tokenInfo } from "../config/secrets";
+import prisma from "../models/prisma-client";
+import CustomError from "./CustomError";
+import { Response } from "express";
 
-export default class UtilityFunctions {
+/*  Password Utilities */
+export const hashPassword = (password: string): string => {
+    const salt = bcrypt.genSaltSync(10);
+    return bcrypt.hashSync(password, salt);
+};
 
-    static hashPassword: (password: string) => string = (password: string) => {
-        const salt: string = bcrypt.genSaltSync(10);
-        return bcrypt.hashSync(password, salt);
-    };
+export const comparePassword = (password: string, hashPassword: string): boolean => {
+    return bcrypt.compareSync(password, hashPassword);
+};
 
-    static comparePassword: (password: string, hashPassword: string) => boolean = (password: string, hashPassword: string) => {
-        return bcrypt.compareSync(password, hashPassword);
-    };
+/*  OTP / Random Number Generators */
+export const generateOtp = (): string => {
+    return crypto.randomInt(100000, 999999).toString();
+};
 
-    static generateOtp: () => string = () => {
-        return crypto.randomInt(100000, 999999).toString();
-    };
+export const generateRandomNumbers = (min: number, max: number): number => {
+    return crypto.randomInt(min, max);
+};
 
-    static generateRandomNumbers: (min: number, max: number) => number = (min: number, max: number) => {
-        return crypto.randomInt(min, max);
-    };
+/*  Token Hashing */
+export const hashToken = (token: string): string => {
+    return crypto.createHash("sha256").update(token).digest("hex");
+};
 
-    // static generateQRCodeFromObject = async (data: Record<string, any>): Promise<string> => {
-    //     const jsonString = JSON.stringify(data);
-    //     return await QRCode.toDataURL(jsonString);
-    // };
+/*  JWT Token Generator & DB Storer */
+export const generateTokensAndStoreHashedRefreshToken = async (payload: IPayload): Promise<IToken> => {
+    // Validate that userId  and email are provided
+    if (!payload.id || !payload.email) throw new Error("valid info is required to generate tokens");
+
+    const accessTokenExp = Math.floor(Date.now() / 1000) + 60 * 60; // 1 hour
+    const refreshTokenExp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 5; // 5 days
+
+    const accessToken = jwt.sign({ ...payload, exp: accessTokenExp }, tokenInfo.accessTokenSecret);
+    const refreshToken = jwt.sign({ ...payload, exp: refreshTokenExp }, tokenInfo.refreshTokenSecret);
+
+    const hashedRefreshToken = hashToken(refreshToken);
+    const expiresAt = new Date(refreshTokenExp * 1000);
+
+    // Delete existing refresh tokens for this user
+    await prisma.refreshToken.deleteMany({ where: { userId: payload.id } });
+
+    // Create new refresh token
+    await prisma.refreshToken.create({
+        data: {
+            userId: payload.id,
+            token: hashedRefreshToken,
+            expiresAt,
+        },
+    });
+
+    return { accessToken, refreshToken, accessTokenExp, refreshTokenExp };
+};
+
+export const verifyRefreshToken = async (token: string) => {
+    const decoded = jwt.verify(token, tokenInfo.refreshTokenSecret) as { id: string, email: string; };
+    if (!decoded) throw new CustomError("Invalid refresh token", 401);
+
+    const hashed = hashToken(token);
+
+    const storedToken = await prisma.refreshToken.findFirst({
+        where: {
+            userId: decoded.id,
+            token: hashed,
+            expiresAt: { gt: new Date() },
+        },
+    });
+
+    if (!storedToken) throw new CustomError("Invalid refresh token", 401);
+
+    return decoded;
+};
+
+export const revokeRefreshToken = async (token: string) => {
+    const hashed = hashToken(token);
+    await prisma.refreshToken.deleteMany({ where: { token: hashed } });
+};
+
+/*  Token Verifier */
+export const verifyToken = (token: string, secretKey: string): any => {
+    return jwt.verify(token, secretKey);
+};
+
+export const cookieOptions = {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict" as const,
+    path: "/",
+};
+
+/*  Set Cookies */
+export const setCookie = (res: any, tokensObj: IToken): void => {
+    const now = Math.floor(Date.now() / 1000);
+    const accessTokenMaxAge = (tokensObj.accessTokenExp - now) * 1000;
+    const refreshTokenMaxAge = (tokensObj.refreshTokenExp - now) * 1000;
+
+    res.cookie("accessToken", tokensObj.accessToken, {
+        ...cookieOptions,
+        maxAge: accessTokenMaxAge,
+    });
+
+    res.cookie("refreshToken", tokensObj.refreshToken, {
+        ...cookieOptions,
+        maxAge: refreshTokenMaxAge,
+    });
+};
 
 
+/*  CLEAR Cookies */
+export const clearAuthCookies = (res: Response): void => {
+    res.clearCookie("accessToken", cookieOptions);
+    res.clearCookie("refreshToken", cookieOptions);
+};
 
 
+/*  Check Token Expiry (soft check without verifying) */
+export const isTokenExpired = (token: string): boolean => {
+    if (!token) return true;
+    const decodedToken: any = jwt.decode(token);
+    const currentTime = Date.now() / 1000;
+    return !decodedToken || decodedToken.exp < currentTime;
+};
 
+/*  Password Generator */
+export const createPassword = (name: string): string => {
+    const sixDigit = generateRandomNumbers(100000, 999999);
+    return name.substring(0, 3) + sixDigit + sixDigit;
+};
 
-    // static sendEmailVarificationOTP: (user: IUser) => Promise<void> = async (user: IUser) => {
-    //     // generate otp
-    //     const otp = this.generateOtp()
-    //     // save otp in db
-    //     await new EmailVerificationModel({ userId: user._id, otp }).save()
-    //     // create varification link
-    //     const link = `${process.env.FRONTEND_URL}/account/verify-email`
-    //     //generate & send email
-    //     const html = `<p>Dear ${user.name},</p><p>Thank you for signing up with our website.
-    //      To complete your registration, please verify your email address by entering the following one-time password (OTP): <a href="${link}">${link}</a> </p>
-    //     <h2>OTP: ${otp}</h2>
-    //     <p>This OTP is valid for 10 minutes. If you didn't request this OTP, please ignore this email.</p>`
-
-    //     await sendEmail(user.email, 'Email Varification', "", html)
-    // }
-
-
-    static generateTokens: (payload: IPayload) => Promise<IToken> = async (payload: IPayload) => {
-        // generate access token
-        // const accessTokenExp = Math.floor(Date.now() / 1000) + 100; // Set expiration to 100 seconds from now
-        const accessTokenExp = Math.floor(Date.now() / 1000) + 60 * 60; // Set expiration to 1 hour from now
-        const accessToken: string = jwt.sign({ ...payload, exp: accessTokenExp }, tokenInfo.accessTokenSecret,
-            // { expiresIn: "100s" }
-        );
-        // generate refresh token
-        const refreshTokenExp = Math.floor(Date.now() / 1000) + 60 * 60 * 24 * 5; // Set expiration to 5 days from now
-
-        const refreshToken: string = jwt.sign({ ...payload, exp: refreshTokenExp }, tokenInfo.refreshTokenSecret,
-            //  { expiresIn: "5d" }
-        );
-
-        // await Promise.all([UserRefreshTokenModel.deleteMany({ userId: user._id }), new UserRefreshTokenModel({ userId: user._id, token: refreshToken }).save()]);
-
-        return { accessToken, refreshToken, accessTokenExp, refreshTokenExp };
-    };
-
-    // static verifyToken: (token: string, secretKey: string) => any = (token: string, secretKey: string) => {
-    //     return jwt.verify(token, secretKey)
-    // }
-
-    // static setCookie: (res: any, tokensObj: IToken) => void = (res: any, tokensObj: IToken) => {
-
-    //     const accessTokenMaxAge = (tokensObj.accessTokenExp - Math.floor(Date.now() / 1000)) * 1000;
-    //     const refreshTokenmaxAge = (tokensObj.refreshTokenExp - Math.floor(Date.now() / 1000)) * 1000;
-
-    //     // Set Cookie for Access Token
-    //     res.cookie('accessToken', tokensObj.accessToken, {
-    //         httpOnly: true,
-    //         secure: true, // Set to true if using HTTPS
-    //         maxAge: accessTokenMaxAge,
-    //         // sameSite: 'strict', // Adjust according to your requirements
-    //     });
-
-    //     // Set Cookie for Refresh Token
-    //     res.cookie('refreshToken', tokensObj.refreshToken, {
-    //         httpOnly: true,
-    //         secure: true, // Set to true if using HTTPS
-    //         maxAge: refreshTokenmaxAge,
-    //         // sameSite: 'strict', // Adjust according to your requirements
-    //     });
-
-    //     res.cookie('is_authenticated', true, {
-    //         httpOnly: false,
-    //         secure: true, // Set to true if using HTTPS
-    //         maxAge: refreshTokenmaxAge,
-    //         // sameSite: 'strict', // Adjust according to your requirements         )
-    //     });
-    // }
-
-    // static isTokenExpired: (token: string) => boolean = (token: string) => {
-    //     if (!token) return true
-    //     const decoded: IToken = this.verifyToken(token, process.env.JWT_ACCESS_TOKEN_SECRET!)
-    //     return decoded ? false : true
-    // }
-
-    // static isTokenExpirednew = (token: string) => {
-    //     if (!token) {
-    //         return true
-    //     }
-    //     const decodedToken: any = jwt.decode(token)
-    //     const currentTime = Date.now() / 1000
-    //     return decodedToken.exp < currentTime
-    // }
-
-    // static sendResetLink: (user: IUser, token: string) => Promise<any> = async (user: IUser, token: string) => {
-    //     const id = user._id
-    //     // create varification link
-    //     const link = `${process.env.FRONTEND_URL}/account/reset-password-confirm/${id}/${token}`
-
-    //     //generate & send email
-    //     const html = `<p>Dear ${user.name},</p><p>Here is your Reset Password Link : <a href="${link}"> <h4>Click Here</h4></a> </p>
-    //     <p>This link is valid for 10 minutes. If you didn't request for reset password link, please ignore this email.</p>`
-
-    //     await sendEmail(user.email, 'Reset Password Link', "", html)
-    // }
-
-    static createPassword = (name: string) => {
-        const sixDigit: number = this.generateRandomNumbers(100000, 999999);
-        const password: string = name.substring(0, 3) + sixDigit;
-        return (password + sixDigit);
-    };
-}
+// export const generateQRCodeFromObject = async (data: Record<string, any>): Promise<string> => {
+//   const jsonString = JSON.stringify(data);
+//   return await QRCode.toDataURL(jsonString);
+// };

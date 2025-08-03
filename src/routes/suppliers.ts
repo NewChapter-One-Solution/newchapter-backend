@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import * as supplierController from '../controllers/suppliersController'; // Adjust the import path as needed
-import jwtAuthMiddleware from '../core/jwtMiddleware';
+import jwtAuthMiddleware from '../middleware/jwtMiddleware';
 
 const supplierRouter = Router();
 

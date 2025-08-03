@@ -1,4 +1,4 @@
-import prisma from "../db/prisma-client";
+import prisma from "../models/prisma-client";
 
 interface PaginationOptions<T> {
     model: keyof typeof prisma;
@@ -40,10 +40,11 @@ export async function paginate<T = any>({
         // ...(nameForData ? { [nameForData]: data } : { data }),
         data,
         meta: {
-            total,
-            page,
-            limit,
+            count: Number(data.length),
+            page: Number(page),
+            limit: Number(limit),
             totalPages: Math.ceil(total / limit),
+            totalItems: Number(total)
         },
     };
 }

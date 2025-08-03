@@ -1,6 +1,6 @@
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
-import { cloudinary_config } from "../secrets";
+import { cloudinary_config } from "../config/secrets";
 
 // cloudinary.config({
 //   cloud_name: "cloudni3",

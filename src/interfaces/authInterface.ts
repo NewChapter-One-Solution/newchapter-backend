@@ -1,6 +1,6 @@
 export interface IPayload {
-    id: string | undefined;
-    email: string | undefined;
+    id: string;
+    email: string;
 }
 
 export interface IToken {

@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import prisma from "../db/prisma-client";
-import asyncHandler from "../helpers/asyncHandler";
-import CustomError from "../helpers/CustomError";
-import UtilityFunctions from "../utils/UtilityFunctions";
+import prisma from "../models/prisma-client";
+import asyncHandler from "../utils/asyncHandler";
+import CustomError from "../utils/CustomError";
 import { paginate } from "../utils/paginatedResponse";
+import { comparePassword, hashPassword } from "../utils/utilityFunctions";
 
 export const getUser = asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) throw new CustomError('User not found', 404);
@@ -33,28 +33,7 @@ export const getAllUsers = asyncHandler(async (req: Request, res: Response) => {
     res.status(200).json({ success: true, status: 200, message: 'Users fetched successfully', data: responseData });
 });
 
-export const updateUserRole = asyncHandler(async (req: Request, res: Response) => {
-    const { userId, role } = req.body;
 
-    if (!userId || !role) throw new CustomError("User ID and role are required", 400);
-
-    const user = await prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new CustomError("User not found", 404);
-
-    if (user.role === "ADMIN" && role !== "ADMIN") {
-        throw new CustomError("Cannot change role of an admin user to a non-admin role", 403);
-    }
-
-    await prisma.user.update({
-        where: { id: userId },
-        data: { role }
-    });
-
-    res.status(200).json({
-        success: true,
-        message: "User role updated successfully"
-    });
-});
 
 export const changePassword = asyncHandler(async (req: Request, res: Response) => {
     const { oldPassword, newPassword, confirmPassword } = req.body;
@@ -72,10 +51,10 @@ export const changePassword = asyncHandler(async (req: Request, res: Response) =
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) throw new CustomError("User not found", 404);
 
-    const isOldPasswordValid = UtilityFunctions.comparePassword(oldPassword, user.hashedPassword);
+    const isOldPasswordValid = comparePassword(oldPassword, user.hashedPassword);
     if (!isOldPasswordValid) throw new CustomError("Old password is incorrect", 400);
 
-    const hashedNewPassword = UtilityFunctions.hashPassword(newPassword);
+    const hashedNewPassword = hashPassword(newPassword);
 
     await prisma.user.update({
         where: { id: userId },

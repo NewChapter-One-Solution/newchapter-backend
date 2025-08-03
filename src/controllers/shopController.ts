@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
-import asyncHandler from '../helpers/asyncHandler';
-import prisma from '../db/prisma-client';
-import CustomError from '../helpers/CustomError'; import { UserPayload } from '../interfaces/jwtInterface';
+import asyncHandler from '../utils/asyncHandler';
+import prisma from '../models/prisma-client';
+import CustomError from '../utils/CustomError'; import { UserPayload } from '../types/jwtInterface';
 
 export const createShop = asyncHandler(async (req: Request, res: Response) => {
     const { name, location } = req.body;
