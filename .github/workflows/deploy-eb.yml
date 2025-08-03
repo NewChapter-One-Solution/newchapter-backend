@@ -1,0 +1,174 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches: [deployment]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Furniture Shop API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Build TypeScript application
+        run: npm run build
+
+      - name: Create .ebextensions directory
+        run: mkdir -p .ebextensions
+
+      - name: Add 01-nodejs.config
+        run: |
+          cat > .ebextensions/01-nodejs.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:container:nodejs:
+              NodeCommand: "npm start"
+              NodeVersion: 20.12.2
+            aws:elasticbeanstalk:application:environment:
+              NODE_ENV: production
+              NPM_USE_PRODUCTION: false
+          EOF
+
+      - name: Add 02-environment.config
+        run: |
+          cat > .ebextensions/02-environment.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:application:environment:
+              PORT: 8080
+              HOST: "0.0.0.0"
+            aws:autoscaling:launchconfiguration:
+              IamInstanceProfile: aws-elasticbeanstalk-ec2-role
+            aws:elasticbeanstalk:healthreporting:system:
+              SystemType: enhanced
+            aws:elasticbeanstalk:cloudwatch:logs:
+              StreamLogs: true
+              DeleteOnTerminate: false
+              RetentionInDays: 7
+          EOF
+
+      - name: Add 03-database.config
+        run: |
+          cat > .ebextensions/03-database.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:application:environment:
+              DB_CONNECTION_TIMEOUT: "30000"
+              DB_IDLE_TIMEOUT: "10000"
+
+          commands:
+            01_install_postgresql_client:
+              command: "yum install -y postgresql15"
+              ignoreErrors: true
+          EOF
+
+      - name: Add 04-instance.config
+        run: |
+          cat > .ebextensions/04-instance.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:environment:
+              EnvironmentType: SingleInstance
+              LoadBalancerType: none
+            aws:autoscaling:asg:
+              MinSize: 1
+              MaxSize: 1
+            aws:elasticbeanstalk:healthreporting:system:
+              HealthCheckSuccessThreshold: Ok
+              HealthCheckURL: /api/v1/health
+          EOF
+
+      - name: Add 05-deployment.config
+        run: |
+          cat > .ebextensions/05-deployment.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:command:
+              DeploymentPolicy: RollingWithAdditionalBatch
+              BatchSizeType: Percentage
+              BatchSize: 30
+              Timeout: 600
+            aws:elasticbeanstalk:application:environment:
+              NPM_CONFIG_PRODUCTION: false
+              SKIP_PREFLIGHT_CHECK: true
+
+          container_commands:
+            01_install_dependencies:
+              command: "npm ci"
+              cwd: "/var/app/staging"
+            02_build_application:
+              command: "npm run build"
+              cwd: "/var/app/staging"
+            03_generate_prisma:
+              command: "npx prisma generate"
+              cwd: "/var/app/staging"
+            04_migrate_database:
+              command: "npx prisma migrate deploy"
+              cwd: "/var/app/staging"
+              leader_only: true
+          EOF
+
+      - name: Create .ebignore
+        run: |
+          cat > .ebignore << 'EOF'
+          .env
+          *.log
+          .DS_Store
+          .git/
+          node_modules/
+          dist/
+          test/
+          coverage/
+          *.md
+          tmp/
+          uploads/
+          .vscode/
+          EOF
+
+      - name: Ensure correct start script in package.json
+        run: |
+          npm pkg set scripts.start="node dist/src/server.js"
+
+      - name: Remove node_modules for package optimization
+        run: rm -rf node_modules
+
+      - name: Create deployment package
+        run: |
+          zip -r furniture-management-api-${{ github.sha }}.zip . \
+            -x "*.git*" \
+            -x "node_modules/*" \
+            -x "*.log" \
+            -x ".env*" \
+            -x "test/*" \
+            -x "**/*.test.*" \
+            -x "**/*.spec.*" \
+            -x "coverage/*"
+
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: furniture-management-api
+          environment_name: furniture-management-api-prod
+          version_label: v${{ github.run_number }}-${{ github.sha }}
+          region: us-east-1
+          deployment_package: furniture-management-api-${{ github.sha }}.zip
+          wait_for_environment_recovery: 300
+
+      - name: Post-deployment verification
+        run: |
+          echo "✅ Deployment Complete"
+          echo "🌐 Check Health at:"
+          echo "https://<your-env-name>.elasticbeanstalk.com/api/v1/health"
