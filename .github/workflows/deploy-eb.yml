@@ -26,12 +26,14 @@ jobs:
       - name: Generate Prisma client
         run: npm run prisma:generate
 
-      - name: Verify TypeScript setup
+      - name: Verify project structure
         run: |
           echo "TypeScript version:"
           npx tsc --version
-          echo "Checking utilityFunctions.ts exists:"
-          ls -la src/utils/utilityFunctions.ts
+          echo "Checking project structure:"
+          ls -la src/
+          echo "Checking utils directory:"
+          ls -la src/utils/ || echo "Utils directory not found"
 
       - name: Build TypeScript application
         run: npm run build
@@ -51,7 +53,7 @@ jobs:
           option_settings:
             aws:elasticbeanstalk:container:nodejs:
               NodeCommand: "npm start"
-              NodeVersion: 20.12.2
+              NodeVersion: 18.20.4
             aws:elasticbeanstalk:application:environment:
               NODE_ENV: production
               NPM_USE_PRODUCTION: false
