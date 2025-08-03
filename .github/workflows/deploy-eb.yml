@@ -17,7 +17,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "20"
+          node-version: "18"
           cache: "npm"
 
       - name: Install dependencies
@@ -26,8 +26,21 @@ jobs:
       - name: Generate Prisma client
         run: npm run prisma:generate
 
+      - name: Verify TypeScript setup
+        run: |
+          echo "TypeScript version:"
+          npx tsc --version
+          echo "Checking utilityFunctions.ts exists:"
+          ls -la src/utils/utilityFunctions.ts
+
       - name: Build TypeScript application
         run: npm run build
+
+      - name: Verify build output
+        run: |
+          echo "Checking build output..."
+          ls -la dist/
+          ls -la dist/src/
 
       - name: Create .ebextensions directory
         run: mkdir -p .ebextensions
