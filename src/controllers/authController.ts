@@ -1,12 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
 import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
 
 import asyncHandler from "../utils/asyncHandler";
-import { tokenInfo } from "../config/secrets";
 import { UserPayload } from "../types/jwtInterface";
-import { clearAuthCookies, comparePassword, generateTokensAndStoreHashedRefreshToken, hashPassword, hashToken, setCookie, verifyRefreshToken } from "../utils/utilityFunctions";
+import { clearAuthCookies, comparePassword, generateTokensAndStoreHashedRefreshToken, hashPassword, hashToken, setCookie, verifyRefreshToken } from "../utils/helperFunctions";
 
 export const register = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {

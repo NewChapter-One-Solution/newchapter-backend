@@ -3,7 +3,7 @@ import prisma from "../models/prisma-client";
 import asyncHandler from "../utils/asyncHandler";
 import CustomError from "../utils/CustomError";
 import { paginate } from "../utils/paginatedResponse";
-import { comparePassword, hashPassword } from "../utils/utilityFunctions";
+import { comparePassword, hashPassword } from "../utils/helperFunctions";
 
 export const getUser = asyncHandler(async (req: Request, res: Response) => {
     if (!req.user) throw new CustomError('User not found', 404);
