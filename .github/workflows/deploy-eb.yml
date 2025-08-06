@@ -53,7 +53,6 @@ jobs:
           option_settings:
             aws:elasticbeanstalk:container:nodejs:
               NodeCommand: "npm start"
-              NodeVersion: 18.20.4
             aws:elasticbeanstalk:application:environment:
               NODE_ENV: production
               NPM_USE_PRODUCTION: false
@@ -90,37 +89,45 @@ jobs:
               ignoreErrors: true
           EOF
 
-      - name: Add 04-instance.config
+      - name: Add 04-scaling.config
         run: |
-          cat > .ebextensions/04-instance.config << 'EOF'
+          cat > .ebextensions/04-scaling.config << 'EOF'
           option_settings:
-            aws:elasticbeanstalk:environment:
-              EnvironmentType: SingleInstance
-              LoadBalancerType: none
             aws:autoscaling:asg:
               MinSize: 1
               MaxSize: 1
+            aws:autoscaling:updatepolicy:rollingupdate:
+              RollingUpdateEnabled: true
+              MaxBatchSize: 1
+              MinInstancesInService: 1
             aws:elasticbeanstalk:healthreporting:system:
+              SystemType: enhanced
               HealthCheckSuccessThreshold: Ok
-              HealthCheckURL: /api/v1/health
           EOF
 
-      - name: Add 05-deployment.config
+      - name: Add 05-healthcheck.config
         run: |
-          cat > .ebextensions/05-deployment.config << 'EOF'
+          cat > .ebextensions/05-healthcheck.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:application:
+              Application Healthcheck URL: /api/v1/health
+          EOF
+
+      - name: Add 06-deployment.config
+        run: |
+          cat > .ebextensions/06-deployment.config << 'EOF'
           option_settings:
             aws:elasticbeanstalk:command:
-              DeploymentPolicy: RollingWithAdditionalBatch
+              DeploymentPolicy: Rolling
               BatchSizeType: Percentage
               BatchSize: 30
               Timeout: 600
             aws:elasticbeanstalk:application:environment:
               NPM_CONFIG_PRODUCTION: false
-              SKIP_PREFLIGHT_CHECK: true
 
           container_commands:
             01_install_dependencies:
-              command: "npm ci"
+              command: "npm ci --only=production"
               cwd: "/var/app/staging"
             02_build_application:
               command: "npm run build"
@@ -138,17 +145,29 @@ jobs:
         run: |
           cat > .ebignore << 'EOF'
           .env
+          .env.local
+          .env.development
           *.log
           .DS_Store
           .git/
+          .gitignore
           node_modules/
-          dist/
           test/
+          tests/
           coverage/
           *.md
+          docs/
           tmp/
+          temp/
           uploads/
           .vscode/
+          .idea/
+          *.swp
+          *.swo
+          **/*.test.js
+          **/*.test.ts
+          **/*.spec.js
+          **/*.spec.ts
           EOF
 
       - name: Ensure correct start script in package.json
