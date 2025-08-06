@@ -365,7 +365,7 @@ furniture-shop-backend/
 │   │   ├── logger.ts                 # Winston logger setup
 │   │   ├── asyncHandler.ts           # Async error handler
 │   │   ├── CustomError.ts            # Custom error class
-│   │   ├── utilityFunctions.ts       # Common utilities
+│   │   ├── helperFunctions.ts       # Common utilities
 │   │   ├── generateBarcode.ts        # Barcode generation
 │   │   ├── invoiceUtils.ts           # Invoice utilities
 │   │   ├── paginatedResponse.ts      # Pagination helper
