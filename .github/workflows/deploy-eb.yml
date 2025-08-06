@@ -51,8 +51,6 @@ jobs:
         run: |
           cat > .ebextensions/01-nodejs.config << 'EOF'
           option_settings:
-            aws:elasticbeanstalk:container:nodejs:
-              NodeCommand: "npm start"
             aws:elasticbeanstalk:application:environment:
               NODE_ENV: production
               NPM_USE_PRODUCTION: false
@@ -89,17 +87,14 @@ jobs:
               ignoreErrors: true
           EOF
 
-      - name: Add 04-scaling.config
+      - name: Add 04-instance.config
         run: |
-          cat > .ebextensions/04-scaling.config << 'EOF'
+          cat > .ebextensions/04-instance.config << 'EOF'
           option_settings:
-            aws:autoscaling:asg:
-              MinSize: 1
-              MaxSize: 1
-            aws:autoscaling:updatepolicy:rollingupdate:
-              RollingUpdateEnabled: true
-              MaxBatchSize: 1
-              MinInstancesInService: 1
+            aws:elasticbeanstalk:environment:
+              EnvironmentType: SingleInstance
+            aws:autoscaling:launchconfiguration:
+              InstanceType: t3.small
             aws:elasticbeanstalk:healthreporting:system:
               SystemType: enhanced
               HealthCheckSuccessThreshold: Ok
@@ -118,24 +113,16 @@ jobs:
           cat > .ebextensions/06-deployment.config << 'EOF'
           option_settings:
             aws:elasticbeanstalk:command:
-              DeploymentPolicy: Rolling
-              BatchSizeType: Percentage
-              BatchSize: 30
+              DeploymentPolicy: AllAtOnce
               Timeout: 600
             aws:elasticbeanstalk:application:environment:
               NPM_CONFIG_PRODUCTION: false
 
           container_commands:
-            01_install_dependencies:
-              command: "npm ci --only=production"
-              cwd: "/var/app/staging"
-            02_build_application:
-              command: "npm run build"
-              cwd: "/var/app/staging"
-            03_generate_prisma:
+            01_generate_prisma:
               command: "npx prisma generate"
               cwd: "/var/app/staging"
-            04_migrate_database:
+            02_migrate_database:
               command: "npx prisma migrate deploy"
               cwd: "/var/app/staging"
               leader_only: true
@@ -173,6 +160,8 @@ jobs:
       - name: Ensure correct start script in package.json
         run: |
           npm pkg set scripts.start="node dist/src/server.js"
+          echo "Verifying package.json start script:"
+          npm pkg get scripts.start
 
       - name: Remove node_modules for package optimization
         run: rm -rf node_modules
