@@ -98,14 +98,30 @@ jobs:
           option_settings:
             aws:elasticbeanstalk:command:
               DeploymentPolicy: AllAtOnce
-              Timeout: 600
+              Timeout: 900
             aws:elasticbeanstalk:application:environment:
               NPM_CONFIG_PRODUCTION: false
 
           container_commands:
-            01_install_production_deps:
-              command: "npm install --only=production"
+            01_install_dependencies:
+              command: "npm ci --only=production"
               cwd: "/var/app/staging"
+            02_generate_prisma:
+              command: "npx prisma generate"
+              cwd: "/var/app/staging"
+              ignoreErrors: true
+            03_create_logs_dir:
+              command: "mkdir -p logs"
+              cwd: "/var/app/staging"
+
+          files:
+            "/opt/elasticbeanstalk/tasks/taillogs.d/nodejs.conf":
+              mode: "000644"
+              owner: root
+              group: root
+              content: |
+                /var/log/nodejs/nodejs.log
+                /var/app/current/logs/*.log
           EOF
 
       - name: Create .ebignore
