@@ -54,6 +54,8 @@ jobs:
             aws:elasticbeanstalk:application:environment:
               NODE_ENV: production
               NPM_USE_PRODUCTION: false
+              PORT: 8080
+              HOST: "0.0.0.0"
           EOF
 
       - name: Add 02-environment.config
