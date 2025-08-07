@@ -12,12 +12,14 @@ import employeeRouter from "./employees";
 import productRouter from "./products";
 import commentsRouter from "./comments";
 import purchaseRouter from "./purchase";
+import batchRouter from "./batchRoutes";
 import inventoryRouter from "./inventory";
 import adminRouter from "./admin";
 import salesRouter from "./sales";
 import customerRouter from "./customers";
 import reportsRouter from "./reports";
 import invoiceRouter from "./invoices";
+import healthRouter from "./health";
 
 const router = Router();
 
@@ -34,10 +36,12 @@ router.use("/employees", employeeRouter);
 router.use("/products", productRouter);
 router.use("/comments", commentsRouter);
 router.use("/purchases", purchaseRouter);
+router.use("/batches", batchRouter);
 router.use("/sales", salesRouter);
 router.use("/customers", customerRouter);
 router.use("/reports", reportsRouter);
 router.use("/invoices", invoiceRouter);
+router.use("/", healthRouter); // Health routes at root level
 // router.use("/demo", demoRouter);
 router.use("/admin", adminRouter);
 

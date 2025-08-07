@@ -1,0 +1,231 @@
+name: Deploy to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches: [deployment]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy Furniture Shop API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+
+      - name: Verify project structure
+        run: |
+          echo "TypeScript version:"
+          npx tsc --version
+          echo "Checking project structure:"
+          ls -la src/
+          echo "Checking utils directory:"
+          ls -la src/utils/ || echo "Utils directory not found"
+
+      - name: Build TypeScript application
+        run: npm run build
+
+      - name: Verify build output
+        run: |
+          echo "Checking build output..."
+          ls -la dist/
+          ls -la dist/src/
+
+      - name: Create .ebextensions directory
+        run: mkdir -p .ebextensions
+
+      - name: Add 01-nodejs.config
+        run: |
+          cat > .ebextensions/01-nodejs.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:application:environment:
+              NODE_ENV: production
+              NPM_USE_PRODUCTION: false
+              PORT: 8080
+              HOST: "0.0.0.0"
+          EOF
+
+      - name: Add 02-environment.config
+        run: |
+          cat > .ebextensions/02-environment.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:application:environment:
+              PORT: 8080
+              HOST: "0.0.0.0"
+            aws:elasticbeanstalk:healthreporting:system:
+              SystemType: enhanced
+            aws:elasticbeanstalk:cloudwatch:logs:
+              StreamLogs: true
+              DeleteOnTerminate: false
+              RetentionInDays: 7
+          EOF
+
+      - name: Add 03-database.config
+        run: |
+          cat > .ebextensions/03-database.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:application:environment:
+              DB_CONNECTION_TIMEOUT: "30000"
+              DB_IDLE_TIMEOUT: "10000"
+          EOF
+
+      - name: Add 04-instance.config
+        run: |
+          cat > .ebextensions/04-instance.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:environment:
+              EnvironmentType: SingleInstance
+            aws:autoscaling:launchconfiguration:
+              InstanceType: t3.small
+          EOF
+
+      - name: Add 05-deployment.config
+        run: |
+          cat > .ebextensions/05-deployment.config << 'EOF'
+          option_settings:
+            aws:elasticbeanstalk:command:
+              DeploymentPolicy: AllAtOnce
+              Timeout: 900
+            aws:elasticbeanstalk:application:environment:
+              NPM_CONFIG_PRODUCTION: false
+
+          container_commands:
+            01_install_dependencies:
+              command: "npm ci --only=production"
+              cwd: "/var/app/staging"
+            02_generate_prisma:
+              command: "npx prisma generate"
+              cwd: "/var/app/staging"
+              ignoreErrors: true
+            03_create_logs_dir:
+              command: "mkdir -p logs"
+              cwd: "/var/app/staging"
+
+          files:
+            "/opt/elasticbeanstalk/tasks/taillogs.d/nodejs.conf":
+              mode: "000644"
+              owner: root
+              group: root
+              content: |
+                /var/log/nodejs/nodejs.log
+                /var/app/current/logs/*.log
+          EOF
+
+      - name: Create .ebignore
+        run: |
+          cat > .ebignore << 'EOF'
+          .env
+          .env.local
+          .env.development
+          *.log
+          .DS_Store
+          .git/
+          .gitignore
+          node_modules/
+          test/
+          tests/
+          coverage/
+          *.md
+          docs/
+          tmp/
+          temp/
+          uploads/
+          .vscode/
+          .idea/
+          *.swp
+          *.swo
+          **/*.test.js
+          **/*.test.ts
+          **/*.spec.js
+          **/*.spec.ts
+          EOF
+
+      - name: Create startup script and update package.json
+        run: |
+          # Create a startup script with better error handling
+          cat > start.js << 'EOF'
+          console.log('🚀 Starting Furniture Shop API...');
+          console.log('📊 System Info:');
+          console.log('  - Node version:', process.version);
+          console.log('  - Environment:', process.env.NODE_ENV || 'development');
+          console.log('  - Port:', process.env.PORT || '8080');
+          console.log('  - Host:', process.env.HOST || '0.0.0.0');
+          console.log('  - Platform:', process.platform);
+
+          // Check if required files exist
+          const fs = require('fs');
+          const serverPath = './dist/src/server.js';
+
+          if (!fs.existsSync(serverPath)) {
+            console.error('❌ Server file not found:', serverPath);
+            process.exit(1);
+          }
+
+          if (!fs.existsSync('./node_modules')) {
+            console.error('❌ node_modules directory not found');
+            process.exit(1);
+          }
+
+          console.log('✅ Pre-flight checks passed');
+          console.log('🔄 Starting server...');
+
+          try {
+            require(serverPath);
+            console.log('✅ Server started successfully');
+          } catch (error) {
+            console.error('❌ Failed to start server:', error.message);
+            console.error('Stack:', error.stack);
+            process.exit(1);
+          }
+          EOF
+
+          # Update package.json
+          npm pkg set scripts.start="node start.js"
+          echo "Verifying package.json start script:"
+          npm pkg get scripts.start
+
+      - name: Remove node_modules for package optimization
+        run: rm -rf node_modules
+
+      - name: Create deployment package
+        run: |
+          zip -r furniture-management-api-${{ github.sha }}.zip . \
+            -x "*.git*" \
+            -x "node_modules/*" \
+            -x "*.log" \
+            -x ".env*" \
+            -x "test/*" \
+            -x "**/*.test.*" \
+            -x "**/*.spec.*" \
+            -x "coverage/*"
+
+      - name: Deploy to Elastic Beanstalk
+        uses: einaregilsson/beanstalk-deploy@v22
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: furniture-management-api
+          environment_name: furniture-management-api-prod
+          version_label: v${{ github.run_number }}-${{ github.sha }}
+          region: us-east-1
+          deployment_package: furniture-management-api-${{ github.sha }}.zip
+          wait_for_environment_recovery: 300
+
+      - name: Post-deployment verification
+        run: |
+          echo "✅ Deployment Complete"
+          echo "🌐 Check Health at:"
+          echo "https://<your-env-name>.elasticbeanstalk.com/api/v1/health"

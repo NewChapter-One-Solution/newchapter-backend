@@ -164,6 +164,7 @@ model Products {
   PurchaseItem PurchaseItem[]
   StockLog     StockLog[]
   SaleItem     SaleItem[]
+  ProductBatch ProductBatch[]
   Warehouses   Warehouses?    @relation(fields: [warehousesId], references: [id])
   warehousesId String?
 }
@@ -214,8 +215,13 @@ model Purchase {
   purchaseDate DateTime       @default(now())
   totalAmount  Float
   status       PurchaseStatus @default(PENDING) // PENDING, RECEIVED, RETURNED
-
+  
+  // Batch information
+  batchId      String?        // External batch ID from supplier
+  batchNumber  String?        // Internal batch number
+  
   purchaseItems PurchaseItem[]
+  batches       ProductBatch[]
 
   createdBy String?
   createdAt DateTime @default(now())
@@ -230,6 +236,10 @@ model PurchaseItem {
   unitPrice   Float
   receivedQty Int    @default(0)
   returnedQty Int    @default(0)
+  
+  // Batch information for this item
+  batchId     String?
+  batch       ProductBatch? @relation(fields: [batchId], references: [id])
 
   product  Products @relation(fields: [productId], references: [id])
   purchase Purchase @relation(fields: [purchaseId], references: [id])
@@ -245,6 +255,10 @@ model StockLog {
   quantity   Int
   reason     String?
   createdAt  DateTime        @default(now())
+  
+  // Batch tracking in stock movements
+  batchId    String?
+  batch      ProductBatch?   @relation(fields: [batchId], references: [id])
 
   product Products @relation(fields: [productId], references: [id])
   shop    Shop     @relation(fields: [shopId], references: [id])
@@ -294,6 +308,30 @@ model Comments {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProductBatch {
+  id              String   @id @default(uuid())
+  batchNumber     String   @unique // Internal batch number (auto-generated)
+  supplierBatchId String?  // External batch ID from supplier
+  purchaseId      String
+  productId       String
+  quantity        Int      // Total quantity in this batch
+  remainingQty    Int      // Remaining quantity available
+  unitPrice       Float
+  expiryDate      DateTime?
+  manufacturingDate DateTime?
+  
+  purchase      Purchase       @relation(fields: [purchaseId], references: [id])
+  product       Products       @relation(fields: [productId], references: [id])
+  purchaseItems PurchaseItem[]
+  stockLogs     StockLog[]
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([batchNumber])
+  @@index([productId])
 }
 
 model RefreshToken {
