@@ -155,17 +155,39 @@ jobs:
 
       - name: Create startup script and update package.json
         run: |
-          # Create a startup script
+          # Create a startup script with better error handling
           cat > start.js << 'EOF'
-          console.log('Starting Furniture Shop API...');
-          console.log('Node version:', process.version);
-          console.log('Environment:', process.env.NODE_ENV);
-          console.log('Port:', process.env.PORT);
+          console.log('🚀 Starting Furniture Shop API...');
+          console.log('📊 System Info:');
+          console.log('  - Node version:', process.version);
+          console.log('  - Environment:', process.env.NODE_ENV || 'development');
+          console.log('  - Port:', process.env.PORT || '8080');
+          console.log('  - Host:', process.env.HOST || '0.0.0.0');
+          console.log('  - Platform:', process.platform);
+
+          // Check if required files exist
+          const fs = require('fs');
+          const serverPath = './dist/src/server.js';
+
+          if (!fs.existsSync(serverPath)) {
+            console.error('❌ Server file not found:', serverPath);
+            process.exit(1);
+          }
+
+          if (!fs.existsSync('./node_modules')) {
+            console.error('❌ node_modules directory not found');
+            process.exit(1);
+          }
+
+          console.log('✅ Pre-flight checks passed');
+          console.log('🔄 Starting server...');
 
           try {
-            require('./dist/src/server.js');
+            require(serverPath);
+            console.log('✅ Server started successfully');
           } catch (error) {
-            console.error('Failed to start server:', error);
+            console.error('❌ Failed to start server:', error.message);
+            console.error('Stack:', error.stack);
             process.exit(1);
           }
           EOF
