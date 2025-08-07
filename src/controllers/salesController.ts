@@ -5,12 +5,56 @@ import prisma from "../models/prisma-client";
 import { UserPayload } from "../types/jwtInterface";
 import { paginate } from "../utils/paginatedResponse";
 import { getNextAvailableInvoiceNumber, calculateInvoiceTotals } from "../utils/invoiceUtils";
+import { getAvailableBatches, updateBatchQuantity } from "./batchController";
 
 // Define interface for sale item
 interface SaleItemData {
   productId: string;
   quantity: number;
   unitPrice: number;
+}
+
+// Interface for batch allocation
+interface BatchAllocation {
+  batchId: string;
+  quantity: number;
+  unitPrice: number;
+}
+
+// Helper function to allocate inventory using FIFO batch system
+async function allocateInventoryFromBatches(
+  shopId: string,
+  productId: string,
+  requiredQuantity: number
+): Promise<BatchAllocation[]> {
+  const availableBatches = await getAvailableBatches(productId, shopId);
+
+  if (availableBatches.length === 0) {
+    throw new CustomError(`No batches available for product`, 400);
+  }
+
+  const allocations: BatchAllocation[] = [];
+  let remainingQuantity = requiredQuantity;
+
+  for (const batch of availableBatches) {
+    if (remainingQuantity <= 0) break;
+
+    const allocateFromBatch = Math.min(remainingQuantity, batch.remainingQty);
+
+    allocations.push({
+      batchId: batch.id,
+      quantity: allocateFromBatch,
+      unitPrice: batch.unitPrice,
+    });
+
+    remainingQuantity -= allocateFromBatch;
+  }
+
+  if (remainingQuantity > 0) {
+    throw new CustomError(`Insufficient inventory. Need ${remainingQuantity} more units`, 400);
+  }
+
+  return allocations;
 }
 
 // Create a new sale
@@ -39,9 +83,10 @@ export const createSale = asyncHandler(
       throw new CustomError("Customer not found", 404);
     }
 
-    // Calculate total amount and validate inventory
+    // Calculate total amount and validate inventory with batch allocation
     let totalAmount = 0;
     const saleItems: SaleItemData[] = [];
+    const batchAllocations: { [productId: string]: BatchAllocation[] } = {};
 
     for (const item of items) {
       const { productId, quantity, unitPrice } = item;
@@ -64,6 +109,10 @@ export const createSale = asyncHandler(
       if (!inventory || inventory.quantity < quantity) {
         throw new CustomError(`Insufficient inventory for product: ${product.name}`, 400);
       }
+
+      // Allocate inventory from batches using FIFO
+      const allocations = await allocateInventoryFromBatches(shopId, productId, quantity);
+      batchAllocations[productId] = allocations;
 
       totalAmount += quantity * unitPrice;
       saleItems.push({
@@ -120,23 +169,36 @@ export const createSale = asyncHandler(
         },
       });
 
-      // Update inventory for each item
+      // Update inventory and batches for each item
       for (const item of saleItems) {
+        const allocations = batchAllocations[item.productId];
+
+        // Update inventory
         await tx.inventory.update({
           where: { shopId_productId: { shopId, productId: item.productId } },
           data: { quantity: { decrement: item.quantity } },
         });
 
-        // Create stock log entry
-        await tx.stockLog.create({
-          data: {
-            productId: item.productId,
-            shopId,
-            changeType: "SALE_OUT",
-            quantity: -item.quantity,
-            reason: `Sale - Invoice: ${invoiceNo}`,
-          },
-        });
+        // Update each batch and create stock logs
+        for (const allocation of allocations) {
+          // Update batch remaining quantity
+          await tx.productBatch.update({
+            where: { id: allocation.batchId },
+            data: { remainingQty: { decrement: allocation.quantity } },
+          });
+
+          // Create stock log entry for each batch
+          await tx.stockLog.create({
+            data: {
+              productId: item.productId,
+              shopId,
+              changeType: "SALE_OUT",
+              quantity: -allocation.quantity,
+              reason: `Sale - Invoice: ${invoiceNo}`,
+              batchId: allocation.batchId,
+            },
+          });
+        }
       }
 
       return newSale;
