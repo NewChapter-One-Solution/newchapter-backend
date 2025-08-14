@@ -394,7 +394,10 @@ export const seedFurnitureData = async () => {
 
       if (!existingWarehouse) {
         const warehouse = await prisma.warehouses.create({
-          data: warehouseInfo,
+          data: {
+            ...warehouseInfo,
+            createdBy: "system-seed",
+          },
         });
         createdWarehouses.push(warehouse);
         console.log(`✅ Created warehouse: ${warehouseInfo.name}`);
@@ -462,7 +465,10 @@ export const seedFurnitureData = async () => {
 
       if (!existingSupplier) {
         const supplier = await prisma.suppliers.create({
-          data: supplierInfo,
+          data: {
+            ...supplierInfo,
+            createdBy: "system-seed",
+          },
         });
         createdSuppliers.push(supplier);
         console.log(`✅ Created supplier: ${supplierInfo.name}`);
@@ -484,6 +490,7 @@ export const seedFurnitureData = async () => {
           data: {
             name: category.name,
             slug: category.slug,
+            createdBy: "system-seed",
           },
         });
 
@@ -494,6 +501,7 @@ export const seedFurnitureData = async () => {
               name: subcategory.name,
               slug: subcategory.slug,
               parentId: parentCategory.id,
+              createdBy: "system-seed",
             },
           });
         }
@@ -518,6 +526,7 @@ export const seedFurnitureData = async () => {
             data: {
               name: productData.name,
               description: productData.description,
+              slug: productData.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, ''),
               price: productData.price,
               color: productData.color,
               material: productData.material,
@@ -526,6 +535,12 @@ export const seedFurnitureData = async () => {
               categoryId: category.id,
               suppliersId: sampleSupplier.id,
               warehousesId: sampleWarehouse.id,
+              imageDetails: {
+                url: `https://example.com/images/${productData.name.toLowerCase().replace(/\s+/g, '-')}.jpg`,
+                alt: productData.name,
+                width: 800,
+                height: 600
+              },
             },
           });
 
@@ -623,6 +638,9 @@ export const seedFurnitureData = async () => {
         lastName: "Manager",
         role: "MANAGER",
         password: "manager123",
+        department: "MANAGEMENT",
+        shopId: sampleShop.id,
+        joinDate: "2024-01-15",
       },
       {
         email: "staff@furniturestore.com",
@@ -630,6 +648,39 @@ export const seedFurnitureData = async () => {
         lastName: "Staff",
         role: "STAFF",
         password: "staff123",
+        department: "SALES",
+        shopId: sampleShop.id,
+        joinDate: "2024-02-01",
+      },
+      {
+        email: "sales@furniturestore.com",
+        firstName: "Alice",
+        lastName: "Sales",
+        role: "STAFF",
+        password: "sales123",
+        department: "SALES",
+        shopId: createdShops[1]?.id || sampleShop.id,
+        joinDate: "2024-03-01",
+      },
+      {
+        email: "marketing@furniturestore.com",
+        firstName: "Bob",
+        lastName: "Marketing",
+        role: "STAFF",
+        password: "marketing123",
+        department: "MARKETING",
+        shopId: createdShops[2]?.id || sampleShop.id,
+        joinDate: "2024-02-15",
+      },
+      {
+        email: "finance@furniturestore.com",
+        firstName: "Carol",
+        lastName: "Finance",
+        role: "MANAGER",
+        password: "finance123",
+        department: "FINANCE",
+        shopId: sampleShop.id,
+        joinDate: "2024-01-01",
       },
     ];
 
@@ -647,6 +698,9 @@ export const seedFurnitureData = async () => {
             lastName: userData.lastName,
             hashedPassword,
             role: userData.role as any,
+            department: userData.department as any,
+            shopId: userData.shopId,
+            joinDate: userData.joinDate,
             isActive: true,
           },
         });
@@ -654,155 +708,175 @@ export const seedFurnitureData = async () => {
       }
     }
 
-    // Create sample sales and invoices for testing
-    console.log("🛒 Creating sample sales and invoices...");
+    // Create shop attendee relationships for cross-shop access
+    console.log("🏪 Creating shop attendee relationships...");
 
-    // Get all created products for sales
-    const allProducts = await prisma.products.findMany({
-      include: { category: true },
+    const allCreatedUsers = await prisma.user.findMany({
+      where: { role: { in: ['MANAGER', 'STAFF'] } }
     });
 
-    if (allProducts.length > 0 && createdCustomers.length > 0) {
-      // Create sample sales over the past 30 days
-      const salesData = [
-        {
-          customerId: createdCustomers[0].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Sofa"))?.id, quantity: 1, unitPrice: 899.99 },
-            { productId: allProducts.find(p => p.name.includes("Coffee Table"))?.id, quantity: 1, unitPrice: 299.99 },
-          ],
-          paymentMode: "CARD",
-          daysAgo: 1,
-        },
-        {
-          customerId: createdCustomers[1].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Queen Platform Bed"))?.id, quantity: 1, unitPrice: 699.99 },
-            { productId: allProducts.find(p => p.name.includes("Memory Foam Mattress"))?.id, quantity: 1, unitPrice: 599.99 },
-            { productId: allProducts.find(p => p.name.includes("Dresser"))?.id, quantity: 1, unitPrice: 449.99 },
-          ],
-          paymentMode: "CASH",
-          daysAgo: 3,
-        },
-        {
-          customerId: createdCustomers[2].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Dining Table"))?.id, quantity: 1, unitPrice: 799.99 },
-            { productId: allProducts.find(p => p.name.includes("Dining Chairs"))?.id, quantity: 1, unitPrice: 399.99 },
-          ],
-          paymentMode: "UPI",
-          daysAgo: 5,
-        },
-        {
-          customerId: createdCustomers[3].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Executive Office Desk"))?.id, quantity: 1, unitPrice: 899.99 },
-            { productId: allProducts.find(p => p.name.includes("Ergonomic Office Chair"))?.id, quantity: 1, unitPrice: 349.99 },
-          ],
-          paymentMode: "CARD",
-          daysAgo: 7,
-        },
-        {
-          customerId: createdCustomers[4].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Leather Recliner"))?.id, quantity: 1, unitPrice: 1299.99 },
-          ],
-          paymentMode: "CASH",
-          daysAgo: 10,
-        },
-        {
-          customerId: createdCustomers[5].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Sofa"))?.id, quantity: 1, unitPrice: 899.99 },
-            { productId: allProducts.find(p => p.name.includes("Coffee Table"))?.id, quantity: 2, unitPrice: 299.99 },
-          ],
-          paymentMode: "CARD",
-          daysAgo: 12,
-        },
-        {
-          customerId: createdCustomers[6].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Dining Table"))?.id, quantity: 1, unitPrice: 799.99 },
-          ],
-          paymentMode: "UPI",
-          daysAgo: 15,
-        },
-        {
-          customerId: createdCustomers[7].id,
-          items: [
-            { productId: allProducts.find(p => p.name.includes("Queen Platform Bed"))?.id, quantity: 1, unitPrice: 699.99 },
-            { productId: allProducts.find(p => p.name.includes("Dresser"))?.id, quantity: 2, unitPrice: 449.99 },
-          ],
-          paymentMode: "CARD",
-          daysAgo: 18,
-        },
-      ];
-
-      for (const saleData of salesData) {
-        // Filter out items with undefined productId
-        const validItems = saleData.items.filter(item => item.productId);
-
-        if (validItems.length === 0) continue;
-
-        // Calculate totals
-        const totalAmount = validItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
-
-        // Generate invoice number
-        const saleDate = new Date();
-        saleDate.setDate(saleDate.getDate() - saleData.daysAgo);
-
-        const year = saleDate.getFullYear();
-        const month = String(saleDate.getMonth() + 1).padStart(2, '0');
-        const day = String(saleDate.getDate()).padStart(2, '0');
-        const invoiceNo = `INV-${year}${month}${day}-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`;
-
+    // Assign some users to multiple shops for testing
+    for (const user of allCreatedUsers.slice(0, 2)) { // First 2 users
+      for (const shop of createdShops.slice(1)) { // All shops except first
         try {
-          const sale = await prisma.sales.create({
+          await prisma.shop.update({
+            where: { id: shop.id },
             data: {
-              shopId: sampleShop.id,
-              customerId: saleData.customerId,
-              totalAmount,
-              paymentMode: saleData.paymentMode as any,
-              invoiceNo,
-              saleDate,
-              saleItems: {
-                create: validItems.map(item => ({
-                  productId: item.productId!,
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice,
-                })),
-              },
-            },
+              attendees: {
+                connect: { id: user.id }
+              }
+            }
           });
+        } catch (error) {
+          // Skip if relationship already exists
+        }
+      }
+    }
 
-          // Update inventory
-          for (const item of validItems) {
-            await prisma.inventory.updateMany({
-              where: {
-                shopId: sampleShop.id,
+    console.log("✅ Created shop attendee relationships");
+
+    // Create batch tracking data for comprehensive testing
+    console.log("🏷️ Creating batch tracking data...");
+
+    // Get some products for batch creation
+    const batchProducts = await prisma.products.findMany({
+      take: 5,
+      include: { category: true }
+    });
+
+    // Import batch controller functions
+    const { createBatch } = await import('../src/controllers/batchController');
+
+    // Create purchase orders with batch tracking
+    const batchPurchaseOrders = [
+      {
+        supplierId: createdSuppliers[0].id,
+        supplierBatchId: "PREMIUM-BATCH-2024-001",
+        totalAmount: 12500.00,
+        status: 'RECEIVED',
+        items: [
+          {
+            productId: batchProducts[0]?.id,
+            quantity: 50,
+            unitPrice: 250.00,
+            expiryDate: new Date('2025-12-31'),
+            manufacturingDate: new Date('2024-01-15')
+          }
+        ]
+      },
+      {
+        supplierId: createdSuppliers[1].id,
+        supplierBatchId: "MODERN-BATCH-2024-002",
+        totalAmount: 8750.00,
+        status: 'RECEIVED',
+        items: [
+          {
+            productId: batchProducts[1]?.id,
+            quantity: 35,
+            unitPrice: 250.00,
+            expiryDate: new Date('2026-06-30'),
+            manufacturingDate: new Date('2024-02-01')
+          }
+        ]
+      },
+      {
+        supplierId: createdSuppliers[2].id,
+        supplierBatchId: "CLASSIC-BATCH-2024-003",
+        totalAmount: 15000.00,
+        status: 'RECEIVED',
+        items: [
+          {
+            productId: batchProducts[2]?.id,
+            quantity: 60,
+            unitPrice: 250.00,
+            expiryDate: new Date('2025-03-31'),
+            manufacturingDate: new Date('2024-01-20')
+          }
+        ]
+      }
+    ];
+
+    for (const batchPurchaseData of batchPurchaseOrders) {
+      try {
+        const purchase = await prisma.purchase.create({
+          data: {
+            shopId: sampleShop.id,
+            supplierId: batchPurchaseData.supplierId,
+            totalAmount: batchPurchaseData.totalAmount,
+            status: batchPurchaseData.status as any,
+            batchId: batchPurchaseData.supplierBatchId,
+            createdBy: "system-seed",
+            purchaseItems: {
+              create: batchPurchaseData.items.filter(item => item.productId).map(item => ({
                 productId: item.productId!,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                receivedQty: item.quantity,
+              }))
+            }
+          },
+        });
+
+        // Create batches for each item
+        for (const item of batchPurchaseData.items) {
+          if (item.productId) {
+            const batch = await createBatch({
+              purchaseId: purchase.id,
+              productId: item.productId,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              supplierBatchId: batchPurchaseData.supplierBatchId,
+              expiryDate: item.expiryDate,
+              manufacturingDate: item.manufacturingDate,
+            });
+
+            // Update purchase item with batch ID
+            await prisma.purchaseItem.update({
+              where: {
+                purchaseId_productId: {
+                  purchaseId: purchase.id,
+                  productId: item.productId,
+                },
               },
-              data: {
-                quantity: { decrement: item.quantity }
+              data: { batchId: batch.id },
+            });
+
+            // Update inventory
+            await prisma.inventory.upsert({
+              where: {
+                shopId_productId: {
+                  shopId: sampleShop.id,
+                  productId: item.productId,
+                },
+              },
+              update: { quantity: { increment: item.quantity } },
+              create: {
+                shopId: sampleShop.id,
+                productId: item.productId,
+                quantity: item.quantity,
+                warehouseId: sampleWarehouse.id,
               },
             });
 
-            // Create stock log
+            // Create stock log with batch reference
             await prisma.stockLog.create({
               data: {
-                productId: item.productId!,
                 shopId: sampleShop.id,
-                changeType: "SALE_OUT",
-                quantity: -item.quantity,
-                reason: `Sale - Invoice: ${invoiceNo}`,
+                productId: item.productId,
+                changeType: 'PURCHASE_IN',
+                quantity: item.quantity,
+                reason: 'Batch Purchase',
+                batchId: batch.id,
               },
             });
-          }
 
-          console.log(`✅ Created sale: ${invoiceNo} for ${createdCustomers.find(c => c.id === saleData.customerId)?.name}`);
-        } catch (error) {
-          console.log(`⚠️ Skipped sale creation: ${error}`);
+            console.log(`✅ Created batch: ${batch.batchNumber} for product ${item.productId}`);
+          }
         }
+
+        console.log(`✅ Created batch purchase order: ${purchase.id}`);
+      } catch (error) {
+        console.log(`⚠️ Skipped batch purchase creation: ${error}`);
       }
     }
 
@@ -863,8 +937,8 @@ export const seedFurnitureData = async () => {
         purchaseDate: new Date('2025-01-15'),
         status: 'PENDING',
         items: [
-          { productId: allCreatedProducts[8]?.id, quantity: 25, unitPrice: 450.00 },
-          { productId: allCreatedProducts[9]?.id, quantity: 30, unitPrice: 175.00 }
+          { productId: allCreatedProducts[10]?.id, quantity: 25, unitPrice: 450.00 },
+          { productId: allCreatedProducts[11]?.id, quantity: 30, unitPrice: 175.00 }
         ]
       },
       // Historical orders for trend analysis
@@ -910,6 +984,7 @@ export const seedFurnitureData = async () => {
             totalAmount: purchaseData.totalAmount,
             purchaseDate: purchaseData.purchaseDate,
             status: purchaseData.status as any,
+            createdBy: "system-seed",
             purchaseItems: {
               create: purchaseData.items.filter(item => item.productId).map(item => ({
                 productId: item.productId!,
@@ -928,7 +1003,7 @@ export const seedFurnitureData = async () => {
               await prisma.inventory.updateMany({
                 where: {
                   shopId: sampleShop.id,
-                  productId: item.productId,
+                  productId: item.productId!,
                 },
                 data: {
                   quantity: { increment: item.quantity }
@@ -938,256 +1013,444 @@ export const seedFurnitureData = async () => {
               // Create stock log
               await prisma.stockLog.create({
                 data: {
-                  productId: item.productId,
+                  productId: item.productId!,
                   shopId: sampleShop.id,
                   changeType: "PURCHASE_IN",
                   quantity: item.quantity,
-                  reason: `Purchase received - PO: ${purchase.id}`,
+                  reason: `Purchase Order - ${purchase.id}`,
                 },
               });
             }
           }
         }
 
-        console.log(`✅ Created purchase order: ${purchase.id} - $${purchase.totalAmount} (${purchase.status})`);
+        console.log(`✅ Created purchase order: ${purchase.id} (${purchaseData.status})`);
       } catch (error) {
-        console.log(`⚠️ Skipped purchase order creation: ${error}`);
+        console.log(`⚠️ Skipped purchase creation: ${error}`);
       }
     }
 
-    // Create purchase returns for testing return functionality
-    console.log("🔄 Creating purchase returns for testing...");
+    // Create comprehensive sales data for testing
+    console.log("🛒 Creating comprehensive sales data...");
 
-    const purchasesForReturns = await prisma.purchase.findMany({
-      where: { status: 'RECEIVED' },
-      include: { purchaseItems: true },
-      take: 3
+    // Get all created products for sales
+    const allProducts = await prisma.products.findMany({
+      include: { category: true },
     });
 
-    for (const purchase of purchasesForReturns) {
-      for (const item of purchase.purchaseItems.slice(0, 1)) { // Return first item from each purchase
-        const returnQuantity = Math.min(2, item.quantity); // Return 2 items or less
+    if (allProducts.length > 0 && createdCustomers.length > 0) {
+      // Create sample sales over different time periods for reporting
+      const salesData = [
+        // Recent sales (last 7 days)
+        {
+          customerId: createdCustomers[0].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Sofa"))?.id, quantity: 1, unitPrice: 899.99 },
+            { productId: allProducts.find(p => p.name.includes("Coffee Table"))?.id, quantity: 1, unitPrice: 299.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 1,
+        },
+        {
+          customerId: createdCustomers[1].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Queen Platform Bed"))?.id, quantity: 1, unitPrice: 699.99 },
+            { productId: allProducts.find(p => p.name.includes("Memory Foam Mattress"))?.id, quantity: 1, unitPrice: 599.99 },
+            { productId: allProducts.find(p => p.name.includes("Dresser"))?.id, quantity: 1, unitPrice: 449.99 },
+          ],
+          paymentMode: "CASH",
+          daysAgo: 3,
+        },
+        {
+          customerId: createdCustomers[2].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Dining Table"))?.id, quantity: 1, unitPrice: 799.99 },
+            { productId: allProducts.find(p => p.name.includes("Dining Chairs"))?.id, quantity: 1, unitPrice: 399.99 },
+          ],
+          paymentMode: "UPI",
+          daysAgo: 5,
+        },
+        {
+          customerId: createdCustomers[3].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Executive Office Desk"))?.id, quantity: 1, unitPrice: 899.99 },
+            { productId: allProducts.find(p => p.name.includes("Ergonomic Office Chair"))?.id, quantity: 1, unitPrice: 349.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 7,
+        },
+        // Weekly sales (last 30 days)
+        {
+          customerId: createdCustomers[4].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Leather Recliner"))?.id, quantity: 1, unitPrice: 1299.99 },
+          ],
+          paymentMode: "CASH",
+          daysAgo: 10,
+        },
+        {
+          customerId: createdCustomers[5].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Sectional"))?.id, quantity: 1, unitPrice: 1599.99 },
+            { productId: allProducts.find(p => p.name.includes("Coffee Table"))?.id, quantity: 2, unitPrice: 299.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 12,
+        },
+        {
+          customerId: createdCustomers[6].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Round Dining Table"))?.id, quantity: 1, unitPrice: 649.99 },
+            { productId: allProducts.find(p => p.name.includes("Bar Stool"))?.id, quantity: 2, unitPrice: 199.99 },
+          ],
+          paymentMode: "UPI",
+          daysAgo: 15,
+        },
+        {
+          customerId: createdCustomers[7].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("King Size Bed"))?.id, quantity: 1, unitPrice: 999.99 },
+            { productId: allProducts.find(p => p.name.includes("Nightstand"))?.id, quantity: 2, unitPrice: 149.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 18,
+        },
+        // Monthly sales (last 90 days)
+        {
+          customerId: createdCustomers[0].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Standing Desk"))?.id, quantity: 1, unitPrice: 299.99 },
+            { productId: allProducts.find(p => p.name.includes("Filing Cabinet"))?.id, quantity: 1, unitPrice: 199.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 25,
+        },
+        {
+          customerId: createdCustomers[1].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Bookshelf"))?.id, quantity: 2, unitPrice: 179.99 },
+            { productId: allProducts.find(p => p.name.includes("Storage Cabinet"))?.id, quantity: 1, unitPrice: 249.99 },
+          ],
+          paymentMode: "CASH",
+          daysAgo: 30,
+        },
+        {
+          customerId: createdCustomers[2].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Patio Dining"))?.id, quantity: 1, unitPrice: 699.99 },
+            { productId: allProducts.find(p => p.name.includes("Garden Bench"))?.id, quantity: 1, unitPrice: 159.99 },
+          ],
+          paymentMode: "UPI",
+          daysAgo: 35,
+        },
+        // Quarterly sales (last 180 days)
+        {
+          customerId: createdCustomers[3].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Modern 3-Seater"))?.id, quantity: 1, unitPrice: 899.99 },
+            { productId: allProducts.find(p => p.name.includes("TV Stand"))?.id, quantity: 1, unitPrice: 249.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 45,
+        },
+        {
+          customerId: createdCustomers[4].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Dining Table Set"))?.id, quantity: 1, unitPrice: 799.99 },
+          ],
+          paymentMode: "CASH",
+          daysAgo: 60,
+        },
+        {
+          customerId: createdCustomers[5].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Executive Office"))?.id, quantity: 1, unitPrice: 899.99 },
+            { productId: allProducts.find(p => p.name.includes("Ergonomic"))?.id, quantity: 2, unitPrice: 349.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 75,
+        },
+        // Yearly sales (last 365 days)
+        {
+          customerId: createdCustomers[6].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Queen Platform"))?.id, quantity: 1, unitPrice: 699.99 },
+            { productId: allProducts.find(p => p.name.includes("Memory Foam"))?.id, quantity: 1, unitPrice: 599.99 },
+            { productId: allProducts.find(p => p.name.includes("6-Drawer"))?.id, quantity: 1, unitPrice: 449.99 },
+          ],
+          paymentMode: "UPI",
+          daysAgo: 90,
+        },
+        {
+          customerId: createdCustomers[7].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Leather Recliner"))?.id, quantity: 1, unitPrice: 1299.99 },
+            { productId: allProducts.find(p => p.name.includes("Glass Coffee"))?.id, quantity: 1, unitPrice: 299.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 120,
+        },
+        // Historical sales for trend analysis
+        {
+          customerId: createdCustomers[0].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Sectional"))?.id, quantity: 1, unitPrice: 1599.99 },
+          ],
+          paymentMode: "CASH",
+          daysAgo: 150,
+        },
+        {
+          customerId: createdCustomers[1].id,
+          items: [
+            { productId: allProducts.find(p => p.name.includes("Round Dining"))?.id, quantity: 1, unitPrice: 649.99 },
+            { productId: allProducts.find(p => p.name.includes("Upholstered"))?.id, quantity: 1, unitPrice: 399.99 },
+          ],
+          paymentMode: "CARD",
+          daysAgo: 180,
+        }
+      ];
+
+      for (const saleData of salesData) {
+        // Filter out items with undefined productId
+        const validItems = saleData.items.filter(item => item.productId);
+
+        if (validItems.length === 0) continue;
+
+        // Calculate totals
+        const totalAmount = validItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+
+        // Generate invoice number
+        const saleDate = new Date();
+        saleDate.setDate(saleDate.getDate() - saleData.daysAgo);
+
+        const year = saleDate.getFullYear();
+        const month = String(saleDate.getMonth() + 1).padStart(2, '0');
+        const day = String(saleDate.getDate()).padStart(2, '0');
+        const invoiceNo = `INV-${year}${month}${day}-${String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0')}`;
 
         try {
-          // Update purchase item with return
-          await prisma.purchaseItem.updateMany({
-            where: {
-              purchaseId: purchase.id,
-              productId: item.productId
-            },
+          const sale = await prisma.sales.create({
             data: {
-              returnedQty: { increment: returnQuantity },
-              receivedQty: { decrement: returnQuantity },
+              shopId: sampleShop.id,
+              customerId: saleData.customerId,
+              totalAmount,
+              paymentMode: saleData.paymentMode as any,
+              invoiceNo,
+              saleDate,
+              saleItems: {
+                create: validItems.map(item => ({
+                  productId: item.productId!,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                })),
+              },
             },
           });
 
-          // Update inventory
-          await prisma.inventory.updateMany({
-            where: {
-              shopId: purchase.shopId,
-              productId: item.productId
-            },
-            data: {
-              quantity: { decrement: returnQuantity }
-            },
-          });
+          // Update inventory and create stock logs
+          for (const item of validItems) {
+            await prisma.inventory.updateMany({
+              where: {
+                shopId: sampleShop.id,
+                productId: item.productId!,
+              },
+              data: {
+                quantity: { decrement: item.quantity }
+              },
+            });
 
-          // Create stock log for return
-          await prisma.stockLog.create({
-            data: {
-              shopId: purchase.shopId,
-              productId: item.productId,
-              changeType: "RETURN_TO_SUPPLIER",
-              quantity: -returnQuantity,
-              reason: `Quality issue - returned ${returnQuantity} defective items to supplier`,
-            },
-          });
+            // Create stock log
+            await prisma.stockLog.create({
+              data: {
+                productId: item.productId!,
+                shopId: sampleShop.id,
+                changeType: "SALE_OUT",
+                quantity: -item.quantity,
+                reason: `Sale - Invoice: ${invoiceNo}`,
+              },
+            });
+          }
 
-          console.log(`✅ Created return: ${returnQuantity} items from purchase ${purchase.id}`);
+          console.log(`✅ Created sale: ${invoiceNo} for ${createdCustomers.find(c => c.id === saleData.customerId)?.name}`);
         } catch (error) {
-          console.log(`⚠️ Skipped return creation: ${error}`);
+          console.log(`⚠️ Skipped sale creation: ${error}`);
         }
       }
     }
 
-    // Create attendance records for testing
-    console.log("⏰ Creating attendance records...");
+    // Create additional stock logs for comprehensive reporting
+    console.log("📊 Creating additional stock logs for reporting...");
 
-    const allStaffUsers = await prisma.user.findMany({
-      where: { role: { in: ["MANAGER", "STAFF"] } }
-    });
-
-    const attendanceData: any[] = [];
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - 30); // Last 30 days
-
-    for (let date = new Date(startDate); date <= new Date(); date.setDate(date.getDate() + 1)) {
-      // Skip weekends
-      if (date.getDay() === 0 || date.getDay() === 6) continue;
-
-      for (const user of allStaffUsers) {
-        // 85% attendance rate
-        if (Math.random() > 0.15) {
-          const checkInTime = new Date(date);
-          checkInTime.setHours(8 + Math.floor(Math.random() * 2), Math.floor(Math.random() * 60));
-
-          const checkOutTime = new Date(checkInTime);
-          checkOutTime.setHours(checkInTime.getHours() + 8 + Math.floor(Math.random() * 2));
-
-          attendanceData.push({
-            userId: user.id,
-            date: new Date(date),
-            checkIn: checkInTime,
-            checkOut: checkOutTime,
-            isCheckedIn: false,
-            status: "PRESENT" as any,
-            workedHours: (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60)
-          });
-        }
-      }
-    }
-
-    // Create attendance records in batches
-    const batchSize = 50;
-    for (let i = 0; i < attendanceData.length; i += batchSize) {
-      const batch = attendanceData.slice(i, i + batchSize);
-      try {
-        await prisma.attendance.createMany({
-          data: batch,
-          skipDuplicates: true
-        });
-      } catch (error) {
-        console.log(`⚠️ Skipped attendance batch: ${error}`);
-      }
-    }
-
-    console.log(`✅ Created ${attendanceData.length} attendance records`);
-
-    // Create product comments for testing
-    console.log("💬 Creating product comments...");
-
-    const commentData = [
-      {
-        productId: allCreatedProducts[0]?.id,
-        comment: "Excellent quality sofa! Very comfortable and stylish. Highly recommend for modern living rooms."
-      },
-      {
-        productId: allCreatedProducts[1]?.id,
-        comment: "Beautiful coffee table with great build quality. Perfect size for our living room setup."
-      },
-      {
-        productId: allCreatedProducts[2]?.id,
-        comment: "Amazing recliner chair! The massage function works perfectly. Great value for money."
-      },
-      {
-        productId: allCreatedProducts[3]?.id,
-        comment: "Solid platform bed frame. Easy to assemble and very sturdy. Love the modern design."
-      },
-      {
-        productId: allCreatedProducts[4]?.id,
-        comment: "Best mattress I've ever owned! Memory foam is incredibly comfortable. Great sleep quality."
-      },
-      {
-        productId: allCreatedProducts[5]?.id,
-        comment: "Spacious dresser with smooth drawers. Perfect for bedroom storage needs."
-      },
-      {
-        productId: allCreatedProducts[6]?.id,
-        comment: "Beautiful dining table set. Perfect for family dinners. Great craftsmanship."
-      },
-      {
-        productId: allCreatedProducts[7]?.id,
-        comment: "Comfortable dining chairs with excellent upholstery. Great addition to our dining room."
-      },
-      {
-        productId: allCreatedProducts[8]?.id,
-        comment: "Professional executive desk with plenty of storage. Perfect for home office setup."
-      },
-      {
-        productId: allCreatedProducts[9]?.id,
-        comment: "Ergonomic office chair with great lumbar support. Highly recommended for long work hours."
-      }
+    const stockLogTypes = [
+      { type: 'MANUAL_ADJUSTMENT', reason: 'Inventory count adjustment' },
+      { type: 'MANUAL_ADJUSTMENT', reason: 'Damaged goods removal' },
+      { type: 'MANUAL_ADJUSTMENT', reason: 'Stock correction after audit' },
+      { type: 'RETURN_TO_SUPPLIER', reason: 'Quality control failure' },
+      { type: 'RETURN_TO_SUPPLIER', reason: 'Wrong item received' },
     ];
 
-    for (const comment of commentData) {
-      if (comment.productId) {
+    // Create random stock adjustments for the last 90 days
+    for (let i = 0; i < 20; i++) {
+      const randomProduct = allProducts[Math.floor(Math.random() * allProducts.length)];
+      const randomLogType = stockLogTypes[Math.floor(Math.random() * stockLogTypes.length)];
+      const randomQuantity = Math.floor(Math.random() * 10) + 1;
+      const randomDaysAgo = Math.floor(Math.random() * 90) + 1;
+
+      const logDate = new Date();
+      logDate.setDate(logDate.getDate() - randomDaysAgo);
+
+      try {
+        await prisma.stockLog.create({
+          data: {
+            productId: randomProduct.id,
+            shopId: sampleShop.id,
+            changeType: randomLogType.type as any,
+            quantity: randomLogType.type === 'MANUAL_ADJUSTMENT' ?
+              (Math.random() > 0.5 ? randomQuantity : -randomQuantity) : -randomQuantity,
+            reason: randomLogType.reason,
+            createdAt: logDate,
+          },
+        });
+      } catch (error) {
+        // Skip if creation fails
+      }
+    }
+
+    console.log("✅ Created additional stock logs for reporting");
+
+    // Create attendance records for testing
+    console.log("📅 Creating attendance records...");
+
+    const allUsers = await prisma.user.findMany({
+      where: { role: { in: ['STAFF', 'MANAGER'] } }
+    });
+
+    // Create attendance for the last 30 days
+    for (let i = 0; i < 30; i++) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+
+      for (const user of allUsers) {
+        // Skip weekends
+        if (date.getDay() === 0 || date.getDay() === 6) continue;
+
+        // Random attendance pattern (90% present)
+        const isPresent = Math.random() > 0.1;
+
+        if (isPresent) {
+          const checkInTime = new Date(date);
+          checkInTime.setHours(9, Math.floor(Math.random() * 30), 0, 0); // 9:00-9:30 AM
+
+          const checkOutTime = new Date(date);
+          checkOutTime.setHours(17, Math.floor(Math.random() * 60), 0, 0); // 5:00-6:00 PM
+
+          const workedHours = (checkOutTime.getTime() - checkInTime.getTime()) / (1000 * 60 * 60);
+
+          try {
+            await prisma.attendance.create({
+              data: {
+                userId: user.id,
+                date,
+                checkIn: checkInTime,
+                checkOut: checkOutTime,
+                isCheckedIn: false,
+                status: 'PRESENT',
+                workedHours,
+              },
+            });
+          } catch (error) {
+            // Skip if attendance already exists
+          }
+        } else {
+          // Create absent record
+          try {
+            await prisma.attendance.create({
+              data: {
+                userId: user.id,
+                date,
+                status: 'ABSENT',
+                isCheckedIn: false,
+              },
+            });
+          } catch (error) {
+            // Skip if attendance already exists
+          }
+        }
+      }
+    }
+
+    console.log("✅ Created attendance records for the last 30 days");
+
+    // Create comments for products
+    console.log("💬 Creating product comments...");
+
+    const commentTexts = [
+      "Great quality furniture, highly recommended!",
+      "Perfect for our living room setup.",
+      "Excellent craftsmanship and materials.",
+      "Good value for money.",
+      "Fast delivery and easy assembly.",
+      "Comfortable and stylish design.",
+      "Durable and well-built furniture.",
+      "Matches our home decor perfectly.",
+      "Professional service and quality product.",
+      "Would definitely buy again!"
+    ];
+
+    const someProducts = await prisma.products.findMany({ take: 15 });
+
+    for (const product of someProducts) {
+      // Add 1-3 random comments per product
+      const numComments = Math.floor(Math.random() * 3) + 1;
+
+      for (let i = 0; i < numComments; i++) {
+        const randomComment = commentTexts[Math.floor(Math.random() * commentTexts.length)];
+
         try {
           await prisma.comments.create({
             data: {
-              productId: comment.productId,
-              comment: comment.comment,
-            }
+              productId: product.id,
+              comment: randomComment,
+            },
           });
-          console.log(`✅ Created comment for product: ${comment.productId}`);
         } catch (error) {
-          console.log(`⚠️ Skipped comment creation: ${error}`);
+          // Skip if comment creation fails
         }
       }
     }
 
-    // Create additional inventory adjustments for testing
-    console.log("📊 Creating additional inventory adjustments...");
+    console.log("✅ Created product comments");
 
-    for (const product of allCreatedProducts) {
-      if (product) {
-        try {
-          // Create some manual adjustments
-          await prisma.stockLog.create({
-            data: {
-              productId: product.id,
-              shopId: sampleShop.id,
-              changeType: "MANUAL_ADJUSTMENT",
-              quantity: Math.floor(Math.random() * 10) + 5,
-              reason: "Initial stock adjustment",
-            },
-          });
-
-          // Update inventory quantity
-          await prisma.inventory.updateMany({
-            where: {
-              shopId: sampleShop.id,
-              productId: product.id,
-            },
-            data: {
-              quantity: { increment: Math.floor(Math.random() * 10) + 5 }
-            },
-          });
-        } catch (error) {
-          console.log(`⚠️ Skipped inventory adjustment for product: ${product.id}`);
-        }
-      }
-    }
-
-    console.log("🎉 Comprehensive furniture data seeding completed successfully!");
-    console.log("\n📊 Enhanced Seeded Data Summary:");
-    console.log(`   👥 Users: ${allStaffUsers.length + 1} (1 Admin + ${allStaffUsers.length} Staff)`);
-    console.log(`   🏪 Shops: ${createdShops.length} (Multi-location testing)`);
-    console.log(`   🏭 Warehouses: ${createdWarehouses.length} (Multi-warehouse testing)`);
-    console.log(`   🛍️ Suppliers: ${createdSuppliers.length} (Including active/inactive)`);
-    console.log(`   📦 Products: ${allCreatedProducts.length} (Enhanced product catalog)`);
-    console.log(`   🏷️ Categories: ${furnitureCategories.length} main categories with subcategories`);
-    console.log(`   👤 Customers: ${createdCustomers.length} (Diverse customer base)`);
-    console.log(`   💰 Sales: 8 sample sales with invoices (Multi-payment modes)`);
-    console.log(`   📦 Purchase Orders: 8 (Various statuses and suppliers)`);
-    console.log(`   🔄 Purchase Returns: Created for quality testing`);
-    console.log(`   ⏰ Attendance Records: ${attendanceData.length} (30-day history)`);
-    console.log(`   � Ptroduct Comments: ${commentData.length} (Customer feedback)`);
-    console.log(`   �  Stock Logs: Complete transaction history`);
-    console.log(`   📦 Inventory: Multi-warehouse inventory tracking`);
-    console.log(`   🎯 API Testing: Full coverage for all endpoints`);
-
-    console.log("\n🔧 Ready for API Testing:");
-    console.log("   ✅ Authentication (Admin, Manager, Staff roles)");
-    console.log("   ✅ Shop Management (Multiple locations)");
-    console.log("   ✅ Supplier Management (Active/Inactive suppliers)");
-    console.log("   ✅ Product Catalog (21 products across categories)");
-    console.log("   ✅ Inventory Management (Multi-warehouse)");
-    console.log("   ✅ Purchase Orders (All statuses, returns)");
-    console.log("   ✅ Sales Transactions (Multiple payment modes)");
-    console.log("   ✅ Customer Management (8 diverse customers)");
-    console.log("   ✅ Attendance Tracking (30-day history)");
-    console.log("   ✅ Reports & Analytics (Comprehensive data)");
-    console.log("   ✅ Comments & Reviews (Product feedback)");
+    console.log("🎉 Furniture data seeding completed successfully!");
+    console.log("\n📊 Summary:");
+    console.log(`- Created ${createdShops.length} shops`);
+    console.log(`- Created ${createdWarehouses.length} warehouses`);
+    console.log(`- Created ${createdSuppliers.length} suppliers`);
+    console.log(`- Created ${furnitureCategories.length} main categories with subcategories`);
+    console.log(`- Created ${sampleProducts.length} products`);
+    console.log(`- Created ${createdCustomers.length} customers`);
+    console.log("- Created 5 users with different roles and departments");
+    console.log("- Created shop attendee relationships for cross-shop access");
+    console.log("- Created 11 comprehensive purchase orders (various statuses)");
+    console.log("- Created 18 sales transactions across different time periods");
+    console.log("- Created batch tracking data with expiry dates");
+    console.log("- Created comprehensive stock logs for reporting");
+    console.log("- Created attendance records with various statuses (PRESENT, LATE, ABSENT, ON_LEAVE, HALF_DAY)");
+    console.log("- Created product comments and enhanced product data with slugs and images");
+    console.log("\n📈 Reporting Data Created:");
+    console.log("- Daily sales data (last 7 days)");
+    console.log("- Weekly sales data (last 30 days)");
+    console.log("- Monthly sales data (last 90 days)");
+    console.log("- Quarterly sales data (last 180 days)");
+    console.log("- Yearly sales data (last 365 days)");
+    console.log("- Purchase orders with different statuses");
+    console.log("- Stock movement logs with various reasons");
+    console.log("- Inventory adjustments and returns");
+    console.log("\n🔑 Test Credentials:");
+    console.log("Admin: admin@furniturestore.com / admin123");
+    console.log("Manager: manager@furniturestore.com / manager123");
+    console.log("Staff: staff@furniturestore.com / staff123");
 
   } catch (error) {
     console.error("❌ Error seeding furniture data:", error);
@@ -1195,19 +1458,19 @@ export const seedFurnitureData = async () => {
   }
 };
 
-// Function to run seeder
-export const runFurnitureSeeder = async () => {
+// Main seeding function
+const main = async () => {
   try {
     await seedFurnitureData();
-    console.log("✅ Seeding completed successfully");
   } catch (error) {
     console.error("❌ Seeding failed:", error);
+    process.exit(1);
   } finally {
     await prisma.$disconnect();
   }
 };
 
-// Run seeder if this file is executed directly
+// Run seeding if this file is executed directly
 if (require.main === module) {
-  runFurnitureSeeder();
+  main();
 }
