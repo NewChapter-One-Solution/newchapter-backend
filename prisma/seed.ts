@@ -1,5 +1,6 @@
 import prisma from "../src/models/prisma-client";
 import { hashPassword } from "../src/utils/helperFunctions";
+import { seedSubscriptionPlans } from "../src/utils/seedSubscriptionPlans";
 
 // Enhanced data for comprehensive API testing
 
@@ -1462,6 +1463,7 @@ export const seedFurnitureData = async () => {
 const main = async () => {
   try {
     await seedFurnitureData();
+    await seedSubscriptionPlans();
   } catch (error) {
     console.error("❌ Seeding failed:", error);
     process.exit(1);

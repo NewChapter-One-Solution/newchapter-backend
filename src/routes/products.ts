@@ -4,6 +4,7 @@ import * as productController from "../controllers/productsController";
 import jwtAuthMiddleware from "../middleware/jwtMiddleware";
 import { singleUpload } from "../middleware/multer";
 import { requirePermissions, PERMISSIONS } from "../middleware/rbacMiddleware";
+import { checkProductLimit } from "../middleware/subscriptionMiddleware";
 
 const productRouter = Router();
 
@@ -14,6 +15,7 @@ productRouter
   .route("/")
   .post(
     requirePermissions([PERMISSIONS.PRODUCT_CREATE]),
+    checkProductLimit,
     singleUpload,
     productController.createProduct
   )

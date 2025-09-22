@@ -3,6 +3,7 @@ import ApiKeyDoc from "../models/apiKeyModel"
 import KeyStoreDoc from "../models/keyStoreModel"
 import { UserDoc } from "../models/userModel"
 import { RoleCode } from "../models/roleModel"
+import { SubscriptionResponse } from "../interfaces/subscriptionInterface"
 
 declare interface PublicRequest extends Request {
   apiKey?: ApiKeyDoc
@@ -16,4 +17,12 @@ declare interface ProtectedRequest extends Request {
 
 declare interface RoleRequest extends ProtectedRequest {
   currentRoleCodes: string[]
+}
+
+declare global {
+  namespace Express {
+    interface Request {
+      subscription?: SubscriptionResponse
+    }
+  }
 }

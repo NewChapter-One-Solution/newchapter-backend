@@ -2,6 +2,7 @@ import { Router } from "express";
 import * as shopController from "../controllers/shopController";
 import jwtAuthMiddleware from "../middleware/jwtMiddleware";
 import { requirePermissions, PERMISSIONS } from "../middleware/rbacMiddleware";
+import { checkShopLimit } from "../middleware/subscriptionMiddleware";
 
 const shopRouter = Router();
 
@@ -12,6 +13,7 @@ shopRouter
   .route("/")
   .post(
     requirePermissions([PERMISSIONS.SHOP_CREATE]),
+    checkShopLimit,
     shopController.createShop
   )
   .get(requirePermissions([PERMISSIONS.SHOP_READ]), shopController.getAllShops);

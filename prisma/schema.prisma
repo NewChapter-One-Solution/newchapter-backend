@@ -88,7 +88,14 @@ model User {
   attendances    Attendance[]
   shopsAttended  Shop[]       @relation("ShopAttendees")
 
+  // Subscription fields
+  currentSubscriptionId String?
+  isSubscriptionActive  Boolean?     @default(false)
+  subscriptionExpiresAt DateTime?
+  trialUsed             Boolean?     @default(false)
+
   refreshTokens RefreshToken[]
+  subscriptions Subscription[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 }
@@ -343,4 +350,112 @@ model RefreshToken {
   expiresAt DateTime
 
   @@index([userId])
+}
+
+// SUBSCRIPTION MODELS
+enum SubscriptionPlan {
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  INACTIVE
+  CANCELLED
+  EXPIRED
+  PENDING
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentGateway {
+  STRIPE
+  RAZORPAY
+  PAYPAL
+}
+
+model SubscriptionPlanDetails {
+  id                String           @id @default(uuid())
+  planType          SubscriptionPlan @unique
+  name              String
+  description       String?
+  price             Float
+  currency          String           @default("USD")
+  billingCycle      String           @default("monthly") // monthly, yearly
+  maxShops          Int
+  maxEmployees      Int
+  maxProducts       Int
+  maxStorage        String           // e.g., "10GB", "100GB", "unlimited"
+  features          Json             // Array of features
+  isActive          Boolean          @default(true)
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                    String                  @id @default(uuid())
+  userId                String
+  planId                String
+  status                SubscriptionStatus      @default(PENDING)
+  startDate             DateTime                @default(now())
+  endDate               DateTime
+  autoRenew             Boolean                 @default(true)
+  trialEndsAt           DateTime?
+  isTrialActive         Boolean                 @default(false)
+  cancelledAt           DateTime?
+  cancellationReason    String?
+  
+  // Payment gateway integration
+  gatewaySubscriptionId String?                 // External subscription ID from payment gateway
+  gatewayCustomerId     String?                 // Customer ID in payment gateway
+  
+  user                  User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                  SubscriptionPlanDetails @relation(fields: [planId], references: [id])
+  payments              Payment[]
+  
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Payment {
+  id                    String         @id @default(uuid())
+  subscriptionId        String
+  amount                Float
+  currency              String         @default("USD")
+  status                PaymentStatus  @default(PENDING)
+  gateway               PaymentGateway
+  gatewayTransactionId  String?        // Transaction ID from payment gateway
+  gatewayPaymentId      String?        // Payment ID from payment gateway
+  gatewayOrderId        String?        // Order ID from payment gateway
+  
+  // Payment metadata
+  paymentMethod         String?        // card, upi, netbanking, etc.
+  failureReason         String?
+  refundAmount          Float?
+  refundedAt            DateTime?
+  
+  // Billing details
+  billingPeriodStart    DateTime
+  billingPeriodEnd      DateTime
+  
+  subscription          Subscription   @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  @@index([subscriptionId])
+  @@index([status])
+  @@index([gateway])
 }
