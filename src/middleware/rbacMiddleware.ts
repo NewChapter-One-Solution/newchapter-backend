@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { Role } from "../../generated/prisma";
+import { Role } from "@prisma/client";
 import { UserPayload } from "../types/jwtInterface";
 
 // Define role hierarchy (higher number = more permissions)

@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as reportsController from "../controllers/reportsController";
 import jwtAuthMiddleware from "../middleware/jwtMiddleware";
 import { requirePermissions, requireRole, PERMISSIONS } from "../middleware/rbacMiddleware";
-import { Role } from "../../generated/prisma";
+import { Role } from "@prisma/client";
 
 const reportsRouter = Router();
 

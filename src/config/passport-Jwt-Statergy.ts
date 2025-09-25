@@ -2,7 +2,7 @@ import { Strategy as JwtStrategy, ExtractJwt, StrategyOptions } from 'passport-j
 import passport from 'passport';
 // import { IUser, UserModel } from '../models/user.model';
 import prisma from '../models/prisma-client';
-import { User } from '../../generated/prisma';
+import { User } from "@prisma/client";
 import { tokenInfo } from './secrets';
 import { UserPayload } from '../types/jwtInterface';
 

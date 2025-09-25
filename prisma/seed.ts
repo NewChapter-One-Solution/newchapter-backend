@@ -1,5 +1,5 @@
 import prisma from "../src/models/prisma-client";
-import { hashPassword } from "../src/utils/utilityFunctions";
+import { hashPassword } from "../src/utils/helperFunctions";
 
 // Enhanced data for comprehensive API testing
 

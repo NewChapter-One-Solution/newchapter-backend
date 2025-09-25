@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as adminController from "../controllers/adminController";
 import jwtAuthMiddleware from "../middleware/jwtMiddleware";
 import { requireRole } from "../middleware/rbacMiddleware";
-import { Role } from "../../generated/prisma";
+import { Role } from "@prisma/client";
 
 const adminRouter = Router();
 
