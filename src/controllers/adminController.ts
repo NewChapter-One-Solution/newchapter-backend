@@ -3,6 +3,8 @@ import asyncHandler from "../utils/asyncHandler";
 import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
 import { Role } from "@prisma/client";
+import { testEmailConfiguration, sendSampleInvoice } from "../utils/testEmail";
+import logger from "../utils/logger";
 
 export const getDashboardStats = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
@@ -208,6 +210,83 @@ export const updateUserRole = asyncHandler(
       message: "User role updated successfully",
       data: updatedUser,
     });
+  }
+);
+
+// Test email configuration
+export const testEmailConfig = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { testEmail } = req.body;
+
+    if (!testEmail) {
+      throw new CustomError("Test email address is required", 400);
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(testEmail)) {
+      throw new CustomError("Invalid email address format", 400);
+    }
+
+    try {
+      const emailSent = await testEmailConfiguration(testEmail);
+
+      if (emailSent) {
+        res.status(200).json({
+          success: true,
+          message: `Test email sent successfully to ${testEmail}`,
+          data: {
+            testEmail,
+            emailSent: true,
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        throw new CustomError("Failed to send test email", 500);
+      }
+    } catch (error) {
+      logger.error(`Error sending test email to ${testEmail}:`, error);
+      throw new CustomError("Failed to send test email. Please check your email configuration.", 500);
+    }
+  }
+);
+
+// Send sample invoice email
+export const sendSampleInvoiceEmail = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { testEmail } = req.body;
+
+    if (!testEmail) {
+      throw new CustomError("Test email address is required", 400);
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(testEmail)) {
+      throw new CustomError("Invalid email address format", 400);
+    }
+
+    try {
+      const emailSent = await sendSampleInvoice(testEmail);
+
+      if (emailSent) {
+        res.status(200).json({
+          success: true,
+          message: `Sample invoice email sent successfully to ${testEmail}`,
+          data: {
+            testEmail,
+            emailSent: true,
+            sampleType: 'invoice',
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        throw new CustomError("Failed to send sample invoice email", 500);
+      }
+    } catch (error) {
+      logger.error(`Error sending sample invoice email to ${testEmail}:`, error);
+      throw new CustomError("Failed to send sample invoice email. Please check your email configuration.", 500);
+    }
   }
 );
 

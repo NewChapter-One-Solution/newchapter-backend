@@ -16,5 +16,8 @@ adminRouter.get("/users", adminController.getAllUsers);
 adminRouter.patch("/users/:userId/status", adminController.updateUserStatus);
 adminRouter.patch("/users/:userId/role", adminController.updateUserRole);
 
+// Email testing endpoints
+adminRouter.post("/test-email", adminController.testEmailConfig);
+adminRouter.post("/test-invoice-email", adminController.sendSampleInvoiceEmail);
 
 export default adminRouter;

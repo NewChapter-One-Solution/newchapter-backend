@@ -34,4 +34,25 @@ invoiceRouter.get("/print/:saleId",
   invoiceController.generateInvoiceHTML
 );
 
+// Email-related routes
+invoiceRouter.post("/email/:saleId",
+  requirePermissions([PERMISSIONS.SALES_UPDATE]),
+  invoiceController.sendInvoiceEmail
+);
+
+invoiceRouter.post("/email/:saleId/resend",
+  requirePermissions([PERMISSIONS.SALES_UPDATE]),
+  invoiceController.resendInvoiceEmail
+);
+
+invoiceRouter.post("/email/:saleId/reminder",
+  requirePermissions([PERMISSIONS.SALES_UPDATE]),
+  invoiceController.sendInvoiceReminder
+);
+
+invoiceRouter.get("/email/:saleId/status",
+  requirePermissions([PERMISSIONS.SALES_READ]),
+  invoiceController.getEmailStatus
+);
+
 export default invoiceRouter;

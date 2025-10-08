@@ -5,6 +5,8 @@ import prisma from "../models/prisma-client";
 import { UserPayload } from "../types/jwtInterface";
 import { paginate } from "../utils/paginatedResponse";
 import { getNextAvailableInvoiceNumber, calculateInvoiceTotals } from "../utils/invoiceUtils";
+import { invoiceEmailService } from "../services/invoiceEmailService";
+import logger from "../utils/logger";
 
 // Define interface for sale item
 interface SaleItemData {
@@ -145,6 +147,24 @@ export const createSale = asyncHandler(
     // Calculate invoice summary for response
     const invoiceCalculation = calculateInvoiceTotals(saleItems, discount);
 
+    // Send invoice email to customer (async, don't wait for completion)
+    if (sale.customer.email) {
+
+      invoiceEmailService.sendInvoiceEmail(sale.id)
+        .then((emailSent) => {
+          if (emailSent) {
+            logger.info(`Invoice email sent successfully to ${sale.customer.email} for sale ${sale.id}`);
+          } else {
+            logger.warn(`Failed to send invoice email to ${sale.customer.email} for sale ${sale.id}`);
+          }
+        })
+        .catch((error) => {
+          logger.error(`Error sending invoice email for sale ${sale.id}:`, error);
+        });
+    } else {
+      logger.info(`Customer ${sale.customer.name} has no email address. Invoice email not sent for sale ${sale.id}`);
+    }
+
     res.status(201).json({
       success: true,
       message: "Sale created successfully and invoice generated",
@@ -156,6 +176,7 @@ export const createSale = asyncHandler(
           invoiceUrl: `/api/v1/invoices/print/${sale.id}`,
           printUrl: `/api/v1/invoices/print/${sale.id}`,
         },
+        emailSent: !!sale.customer.email, // Indicate if email will be sent
       },
     });
   }

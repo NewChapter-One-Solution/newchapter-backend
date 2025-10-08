@@ -4,6 +4,9 @@ import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
 import { UserPayload } from "../types/jwtInterface";
 import { paginate } from "../utils/paginatedResponse";
+import { invoiceEmailService } from "../services/invoiceEmailService";
+import logger from "../utils/logger";
+import { generateInvoiceHTMLService } from "../services/invoiceSevice";
 
 // Get invoice by sale ID
 export const getInvoiceBySaleId = asyncHandler(
@@ -595,6 +598,7 @@ export const generateInvoiceHTML = asyncHandler(
   async (req: Request, res: Response, next: NextFunction) => {
     const { saleId } = req.params;
 
+
     if (!saleId) {
       throw new CustomError("Sale ID is required", 400);
     }
@@ -623,118 +627,297 @@ export const generateInvoiceHTML = asyncHandler(
       throw new CustomError("Sale not found", 404);
     }
 
-    const taxable = sale.saleItems.reduce(
-      (sum, item) => sum + item.unitPrice * item.quantity,
-      0
-    );
+    // const invoiceHTML = await generateInvoiceHTMLService(saleId)
+    const invoiceHTML = await invoiceEmailService.generateInvoiceHTML(sale)
 
-    const discount = taxable - sale.totalAmount;
-    const gstRate = 18;
-    const invoiceDate = new Date(sale.saleDate).toISOString().split("T")[0];
+    //     if (!saleId) {
+    //       throw new CustomError("Sale ID is required", 400);
+    //     }
 
-    const invoiceHTML = `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <title>Tax Invoice</title>
-</head>
-<body style="font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 700px; margin: auto; border: 1px solid #ddd; padding: 20px;">
-    <tr>
-      <td align="center" colspan="2" style="font-size: 22px; font-weight: bold; padding-bottom: 10px;">TAX INVOICE</td>
-    </tr>
-    <tr>
-      <td colspan="2" style="padding-bottom: 15px;">
-        <strong>Invoice No:</strong> ${sale.invoiceNo}<br />
-        <strong>Invoice Date:</strong> ${invoiceDate}<br />
-        <strong>Due Date:</strong> -
-      </td>
-    </tr>
+    //     const sale = await prisma.sales.findUnique({
+    //       where: { id: saleId },
+    //       include: {
+    //         saleItems: {
+    //           include: {
+    //             product: {
+    //               select: {
+    //                 name: true,
+    //                 price: true,
+    //                 description: true,
+    //                 category: { select: { name: true } },
+    //               },
+    //             },
+    //           },
+    //         },
+    //         customer: true,
+    //         shop: { select: { name: true, location: true } },
+    //       },
+    //     });
 
-    <tr>
-      <td valign="top" width="50%" style="padding-right: 10px;">
-        <strong>Billed By:</strong><br />
-        ${sale.shop.name}<br />
-        Phone: -<br />
-        GSTIN: -<br />
-        PAN: -<br />
-        ${sale.shop.location || "-"}
-      </td>
-      <td valign="top" width="50%">
-        <strong>Billed To:</strong><br />
-        ${sale.customer.name}<br />
-        Phone: ${sale.customer.phone || "-"}<br />
-        GSTIN: -<br />
-        ${sale.customer.address || "-"}
-      </td>
-    </tr>
+    //     if (!sale) {
+    //       throw new CustomError("Sale not found", 404);
+    //     }
 
-    <tr>
-      <td colspan="2" style="padding: 20px 0;">
-        <table width="100%" cellpadding="5" cellspacing="0" border="1" style="border-collapse: collapse;">
-          <thead style="background: #f0f0f0;">
-            <tr>
-              <th>Item</th>
-              <th>HSN/SAC</th>
-              <th>Rate</th>
-              <th>Qty</th>
-              <th>Taxable</th>
-              <th>GST%</th>
-              <th>Total</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${sale.saleItems
-        .map((item) => {
-          const lineTaxable = item.unitPrice * item.quantity;
-          const lineTotal = lineTaxable * (1 + gstRate / 100);
-          return `
-              <tr>
-                <td>${item.product.name}</td>
-                <td>9403</td>
-                <td>${item.unitPrice.toFixed(2)}</td>
-                <td>${item.quantity}</td>
-                <td>${lineTaxable.toFixed(2)}</td>
-                <td>${gstRate}</td>
-                <td>${lineTotal.toFixed(2)}</td>
-              </tr>
-            `;
-        })
-        .join("")}
-          </tbody>
-        </table>
-      </td>
-    </tr>
+    //     const taxable = sale.saleItems.reduce(
+    //       (sum, item) => sum + item.unitPrice * item.quantity,
+    //       0
+    //     );
 
-    <tr>
-      <td colspan="2" align="right">
-        <table cellpadding="5" cellspacing="0" style="width: 300px;">
-          <tr><td>Taxable Value</td><td align="right">₹${taxable.toFixed(2)}</td></tr>
-          <tr><td>Subtotal</td><td align="right">₹${(taxable * 1.18).toFixed(2)}</td></tr>
-          <tr><td>Discount</td><td align="right">₹${discount.toFixed(2)}</td></tr>
-          <tr><td><strong>Total</strong></td><td align="right"><strong>₹${sale.totalAmount.toFixed(2)}</strong></td></tr>
-          <tr><td>Amount Paid</td><td align="right">₹0.00</td></tr>
-          <tr><td><strong>Balance Due</strong></td><td align="right"><strong>₹${sale.totalAmount.toFixed(2)}</strong></td></tr>
-        </table>
-      </td>
-    </tr>
+    //     const discount = taxable - sale.totalAmount;
+    //     const gstRate = 18;
+    //     const invoiceDate = new Date(sale.saleDate).toISOString().split("T")[0];
 
-    <tr>
-      <td colspan="2" style="padding-top: 20px; font-size: 12px; line-height: 18px;">
-        <strong>Terms and Conditions:</strong><br />
-        1. Please pay within 15 days from the invoice date. Overdue interest @14% will apply.<br />
-        2. Always quote invoice number when making payments.<br />
-        3. Goods once sold cannot be returned.
-      </td>
-    </tr>
-  </table>
-</body>
-</html>
-    `;
+    //     const invoiceHTML = `
+    // <!DOCTYPE html>
+    // <html lang="en">
+    // <head>
+    //   <meta charset="UTF-8" />
+    //   <title>Tax Invoice</title>
+    // </head>
+    // <body style="font-family: Arial, sans-serif; font-size: 14px; color: #333; margin: 0; padding: 20px;">
+    //   <table width="100%" cellpadding="0" cellspacing="0" style="max-width: 700px; margin: auto; border: 1px solid #ddd; padding: 20px;">
+    //     <tr>
+    //       <td align="center" colspan="2" style="font-size: 22px; font-weight: bold; padding-bottom: 10px;">TAX INVOICE</td>
+    //     </tr>
+    //     <tr>
+    //       <td colspan="2" style="padding-bottom: 15px;">
+    //         <strong>Invoice No:</strong> ${sale.invoiceNo}<br />
+    //         <strong>Invoice Date:</strong> ${invoiceDate}<br />
+    //         <strong>Due Date:</strong> -
+    //       </td>
+    //     </tr>
+
+    //     <tr>
+    //       <td valign="top" width="50%" style="padding-right: 10px;">
+    //         <strong>Billed By:</strong><br />
+    //         ${sale.shop.name}<br />
+    //         Phone: -<br />
+    //         GSTIN: -<br />
+    //         PAN: -<br />
+    //         ${sale.shop.location || "-"}
+    //       </td>
+    //       <td valign="top" width="50%">
+    //         <strong>Billed To:</strong><br />
+    //         ${sale.customer.name}<br />
+    //         Phone: ${sale.customer.phone || "-"}<br />
+    //         GSTIN: -<br />
+    //         ${sale.customer.address || "-"}
+    //       </td>
+    //     </tr>
+
+    //     <tr>
+    //       <td colspan="2" style="padding: 20px 0;">
+    //         <table width="100%" cellpadding="5" cellspacing="0" border="1" style="border-collapse: collapse;">
+    //           <thead style="background: #f0f0f0;">
+    //             <tr>
+    //               <th>Item</th>
+    //               <th>HSN/SAC</th>
+    //               <th>Rate</th>
+    //               <th>Qty</th>
+    //               <th>Taxable</th>
+    //               <th>GST%</th>
+    //               <th>Total</th>
+    //             </tr>
+    //           </thead>
+    //           <tbody>
+    //             ${sale.saleItems
+    //         .map((item) => {
+    //           const lineTaxable = item.unitPrice * item.quantity;
+    //           const lineTotal = lineTaxable * (1 + gstRate / 100);
+    //           return `
+    //               <tr>
+    //                 <td>${item.product.name}</td>
+    //                 <td>9403</td>
+    //                 <td>${item.unitPrice.toFixed(2)}</td>
+    //                 <td>${item.quantity}</td>
+    //                 <td>${lineTaxable.toFixed(2)}</td>
+    //                 <td>${gstRate}</td>
+    //                 <td>${lineTotal.toFixed(2)}</td>
+    //               </tr>
+    //             `;
+    //         })
+    //         .join("")}
+    //           </tbody>
+    //         </table>
+    //       </td>
+    //     </tr>
+
+    //     <tr>
+    //       <td colspan="2" align="right">
+    //         <table cellpadding="5" cellspacing="0" style="width: 300px;">
+    //           <tr><td>Taxable Value</td><td align="right">₹${taxable.toFixed(2)}</td></tr>
+    //           <tr><td>Subtotal</td><td align="right">₹${(taxable * 1.18).toFixed(2)}</td></tr>
+    //           <tr><td>Discount</td><td align="right">₹${discount.toFixed(2)}</td></tr>
+    //           <tr><td><strong>Total</strong></td><td align="right"><strong>₹${sale.totalAmount.toFixed(2)}</strong></td></tr>
+    //           <tr><td>Amount Paid</td><td align="right">₹0.00</td></tr>
+    //           <tr><td><strong>Balance Due</strong></td><td align="right"><strong>₹${sale.totalAmount.toFixed(2)}</strong></td></tr>
+    //         </table>
+    //       </td>
+    //     </tr>
+
+    //     <tr>
+    //       <td colspan="2" style="padding-top: 20px; font-size: 12px; line-height: 18px;">
+    //         <strong>Terms and Conditions:</strong><br />
+    //         1. Please pay within 15 days from the invoice date. Overdue interest @14% will apply.<br />
+    //         2. Always quote invoice number when making payments.<br />
+    //         3. Goods once sold cannot be returned.
+    //       </td>
+    //     </tr>
+    //   </table>
+    // </body>
+    // </html>
+    //     `;
 
     res.setHeader("Content-Type", "text/html");
     res.status(200).send(invoiceHTML);
+  }
+);
+
+// Send invoice email manually
+export const sendInvoiceEmail = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { saleId } = req.params;
+
+    if (!saleId) {
+      throw new CustomError("Sale ID is required", 400);
+    }
+
+    // Verify sale exists and has customer email
+    const sale = await prisma.sales.findUnique({
+      where: { id: saleId },
+      include: {
+        customer: { select: { email: true, name: true } }
+      }
+    });
+
+    if (!sale) {
+      throw new CustomError("Sale not found", 404);
+    }
+
+    if (!sale.customer.email) {
+      throw new CustomError("Customer email not available", 400);
+    }
+
+    try {
+      const emailSent = await invoiceEmailService.sendInvoiceEmail(saleId);
+
+      if (emailSent) {
+        res.status(200).json({
+          success: true,
+          message: `Invoice email sent successfully to ${sale.customer.email}`,
+          data: {
+            saleId,
+            customerEmail: sale.customer.email,
+            customerName: sale.customer.name,
+            emailSent: true
+          }
+        });
+      } else {
+        throw new CustomError("Failed to send invoice email", 500);
+      }
+    } catch (error) {
+      logger.error(`Error sending invoice email for sale ${saleId}:`, error);
+      throw new CustomError("Failed to send invoice email", 500);
+    }
+  }
+);
+
+// Send invoice reminder email
+export const sendInvoiceReminder = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { saleId } = req.params;
+    const { type = 'followup' } = req.body;
+
+    if (!saleId) {
+      throw new CustomError("Sale ID is required", 400);
+    }
+
+    if (!['payment', 'followup'].includes(type)) {
+      throw new CustomError("Invalid reminder type. Use 'payment' or 'followup'", 400);
+    }
+
+    // Verify sale exists and has customer email
+    const sale = await prisma.sales.findUnique({
+      where: { id: saleId },
+      include: {
+        customer: { select: { email: true, name: true } }
+      }
+    });
+
+    if (!sale) {
+      throw new CustomError("Sale not found", 404);
+    }
+
+    if (!sale.customer.email) {
+      throw new CustomError("Customer email not available", 400);
+    }
+
+    try {
+      const emailSent = await invoiceEmailService.sendInvoiceReminder(saleId, type);
+
+      if (emailSent) {
+        res.status(200).json({
+          success: true,
+          message: `${type} reminder email sent successfully to ${sale.customer.email}`,
+          data: {
+            saleId,
+            customerEmail: sale.customer.email,
+            customerName: sale.customer.name,
+            reminderType: type,
+            emailSent: true
+          }
+        });
+      } else {
+        throw new CustomError("Failed to send reminder email", 500);
+      }
+    } catch (error) {
+      logger.error(`Error sending ${type} reminder email for sale ${saleId}:`, error);
+      throw new CustomError("Failed to send reminder email", 500);
+    }
+  }
+);
+
+// Resend invoice email (alias for sendInvoiceEmail)
+export const resendInvoiceEmail = sendInvoiceEmail;
+
+// Get email status for a sale
+export const getEmailStatus = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { saleId } = req.params;
+
+    if (!saleId) {
+      throw new CustomError("Sale ID is required", 400);
+    }
+
+    const sale = await prisma.sales.findUnique({
+      where: { id: saleId },
+      include: {
+        customer: {
+          select: {
+            email: true,
+            name: true
+          }
+        }
+      }
+    });
+
+    if (!sale) {
+      throw new CustomError("Sale not found", 404);
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Email status retrieved successfully",
+      data: {
+        saleId,
+        customerName: sale.customer.name,
+        customerEmail: sale.customer.email,
+        hasEmail: !!sale.customer.email,
+        canSendEmail: !!sale.customer.email,
+        invoiceNo: sale.invoiceNo,
+        saleDate: sale.saleDate
+      }
+    });
   }
 );
 
