@@ -39,4 +39,36 @@ inventoryRouter.get(
   inventoryController.getStockLogs
 );
 
+// Low stock alert routes
+inventoryRouter.post(
+  "/alerts/:shopId",
+  requirePermissions([PERMISSIONS.INVENTORY_UPDATE]),
+  inventoryController.sendLowStockAlert
+);
+
+inventoryRouter.post(
+  "/alerts/send-all",
+  requirePermissions([PERMISSIONS.INVENTORY_UPDATE]),
+  inventoryController.sendAllLowStockAlerts
+);
+
+inventoryRouter.get(
+  "/alerts/summary",
+  requirePermissions([PERMISSIONS.INVENTORY_READ]),
+  inventoryController.getLowStockSummary
+);
+
+inventoryRouter.get(
+  "/alerts/detailed",
+  requirePermissions([PERMISSIONS.INVENTORY_READ]),
+  inventoryController.getLowStockItemsDetailed
+);
+
+// Admin only - trigger manual low stock check
+inventoryRouter.post(
+  "/alerts/trigger-check",
+  requirePermissions([PERMISSIONS.ADMIN_ACCESS]),
+  inventoryController.triggerLowStockCheck
+);
+
 export default inventoryRouter;

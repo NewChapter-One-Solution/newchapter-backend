@@ -56,6 +56,8 @@ export const PERMISSIONS = {
   // Reports
   REPORTS_VIEW: "reports:view",
   REPORTS_EXPORT: "reports:export",
+
+  ADMIN_ACCESS: "admin:access",
 } as const;
 
 // Define base permissions for each role

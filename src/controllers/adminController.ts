@@ -4,6 +4,7 @@ import CustomError from "../utils/CustomError";
 import prisma from "../models/prisma-client";
 import { Role } from "@prisma/client";
 import { testEmailConfiguration, sendSampleInvoice } from "../utils/testEmail";
+import { lowStockEmailService } from "../services/lowStockEmailService";
 import logger from "../utils/logger";
 
 export const getDashboardStats = asyncHandler(
@@ -286,6 +287,46 @@ export const sendSampleInvoiceEmail = asyncHandler(
     } catch (error) {
       logger.error(`Error sending sample invoice email to ${testEmail}:`, error);
       throw new CustomError("Failed to send sample invoice email. Please check your email configuration.", 500);
+    }
+  }
+);
+
+// Send test low stock alert email
+export const sendTestLowStockAlert = asyncHandler(
+  async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+    const { testEmail, shopId } = req.body;
+
+    if (!testEmail) {
+      throw new CustomError("Test email address is required", 400);
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(testEmail)) {
+      throw new CustomError("Invalid email address format", 400);
+    }
+
+    try {
+      const emailSent = await lowStockEmailService.sendTestLowStockAlert(testEmail, shopId);
+
+      if (emailSent) {
+        res.status(200).json({
+          success: true,
+          message: `Test low stock alert sent successfully to ${testEmail}`,
+          data: {
+            testEmail,
+            shopId: shopId || 'sample-shop-id',
+            emailSent: true,
+            sampleType: 'low-stock-alert',
+            timestamp: new Date().toISOString()
+          }
+        });
+      } else {
+        throw new CustomError("Failed to send test low stock alert", 500);
+      }
+    } catch (error) {
+      logger.error(`Error sending test low stock alert to ${testEmail}:`, error);
+      throw new CustomError("Failed to send test low stock alert. Please check your email configuration.", 500);
     }
   }
 );

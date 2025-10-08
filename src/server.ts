@@ -5,6 +5,8 @@ import app from "./app";
 import prisma from "./models/prisma-client";
 import { autoInitialize } from "./utils/startup";
 import logger from "./utils/logger";
+// Initialize low stock cron job
+import "./jobs/lowStockCron";
 
 const port = Number(process.env.PORT) || 8001;
 const host = process.env.HOST || "localhost";
