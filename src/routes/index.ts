@@ -18,6 +18,7 @@ import salesRouter from "./sales";
 import customerRouter from "./customers";
 import reportsRouter from "./reports";
 import invoiceRouter from "./invoices";
+import productItemsRouter from "./productItems";
 
 const router = Router();
 
@@ -38,6 +39,7 @@ router.use("/sales", salesRouter);
 router.use("/customers", customerRouter);
 router.use("/reports", reportsRouter);
 router.use("/invoices", invoiceRouter);
+router.use("/product-items", productItemsRouter);
 // router.use("/demo", demoRouter);
 router.use("/admin", adminRouter);
 

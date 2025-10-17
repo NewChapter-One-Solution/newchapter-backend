@@ -1,0 +1,121 @@
+# Individual Item Tracking API Tests
+# Use this file with REST Client extension in VS Code or similar HTTP client
+
+### Variables
+@baseUrl = http://localhost:8001/api/v1
+@authToken = your-jwt-token-here
+@productId = your-product-id-here
+@shopId = your-shop-id-here
+@customerId = your-customer-id-here
+@purchaseId = your-purchase-id-here
+
+### 1. Get individual items for a product
+GET {{baseUrl}}/product-items/product/{{productId}}/items?page=1&limit=10&status=AVAILABLE
+Authorization: Bearer {{authToken}}
+
+### 2. Get individual items with filtering
+GET {{baseUrl}}/product-items/product/{{productId}}/items?shopId={{shopId}}&status=AVAILABLE
+Authorization: Bearer {{authToken}}
+
+### 3. Get specific item details with history
+GET {{baseUrl}}/product-items/item-uuid-here
+Authorization: Bearer {{authToken}}
+
+### 4. Move item between locations (Manager/Admin only)
+PATCH {{baseUrl}}/product-items/item-uuid-here/move
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "toShopId": "{{shopId}}",
+  "reason": "Transfer to main store for display"
+}
+
+### 5. Update item status (Manager/Admin only)
+PATCH {{baseUrl}}/product-items/item-uuid-here/status
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "status": "DAMAGED",
+  "condition": "POOR",
+  "reason": "Customer return - scratched surface"
+}
+
+### 6. Enhanced purchase receiving with individual item creation (Manager/Admin only)
+POST {{baseUrl}}/product-items/purchase/{{purchaseId}}/receive
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "items": [
+    {
+      "purchaseItemId": "purchase-item-uuid-here",
+      "receivedQty": 5,
+      "serialNumbers": ["SN001", "SN002", "SN003", "SN004", "SN005"]
+    }
+  ]
+}
+
+### 7. Enhanced sales processing with individual item tracking
+POST {{baseUrl}}/product-items/sales/process
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "saleData": {
+    "shopId": "{{shopId}}",
+    "customerId": "{{customerId}}",
+    "paymentMode": "CASH",
+    "items": [
+      {
+        "productId": "{{productId}}",
+        "quantity": 2,
+        "unitPrice": 1299.99
+      }
+    ]
+  }
+}
+
+### 8. Enhanced sales with specific item selection
+POST {{baseUrl}}/product-items/sales/process
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "saleData": {
+    "shopId": "{{shopId}}",
+    "customerId": "{{customerId}}",
+    "paymentMode": "CARD",
+    "items": [
+      {
+        "productId": "{{productId}}",
+        "quantity": 2,
+        "unitPrice": 1299.99,
+        "specificItemIds": ["item-uuid-1", "item-uuid-2"]
+      }
+    ]
+  }
+}
+
+### 9. Test existing sales API (should still work)
+POST {{baseUrl}}/sales
+Authorization: Bearer {{authToken}}
+Content-Type: application/json
+
+{
+  "shopId": "{{shopId}}",
+  "customerId": "{{customerId}}",
+  "paymentMode": "CASH",
+  "items": [
+    {
+      "productId": "{{productId}}",
+      "quantity": 1,
+      "unitPrice": 1299.99
+    }
+  ]
+}
+
+### 10. Test existing inventory API (should still work)
+GET {{baseUrl}}/inventory/{{shopId}}
+Authorization: Bearer {{authToken}}

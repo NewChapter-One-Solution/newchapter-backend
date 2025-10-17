@@ -56,6 +56,24 @@ enum AttendanceStatus {
   HALF_DAY
 }
 
+enum ItemStatus {
+  AVAILABLE
+  RESERVED
+  SOLD
+  DAMAGED
+  RETURNED
+  DISPOSED
+}
+
+enum ItemCondition {
+  NEW
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+}
+
 // MODELs
 model Shop {
   id        String   @id @default(uuid())
@@ -67,10 +85,11 @@ model Shop {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  Inventory Inventory[]
-  Purchase  Purchase[]
-  StockLog  StockLog[]
-  Sales     Sales[]
+  Inventory   Inventory[]
+  Purchase    Purchase[]
+  StockLog    StockLog[]
+  Sales       Sales[]
+  ProductItem ProductItem[]
 }
 
 model User {
@@ -120,8 +139,9 @@ model Warehouses {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  Inventory Inventory[]
-  Products  Products[]
+  Inventory   Inventory[]
+  Products    Products[]
+  ProductItem ProductItem[]
 }
 
 model Category {
@@ -164,6 +184,7 @@ model Products {
   PurchaseItem PurchaseItem[]
   StockLog     StockLog[]
   SaleItem     SaleItem[]
+  ProductItem  ProductItem[]
   Warehouses   Warehouses?    @relation(fields: [warehousesId], references: [id])
   warehousesId String?
 }
@@ -216,6 +237,7 @@ model Purchase {
   status       PurchaseStatus @default(PENDING) // PENDING, RECEIVED, RETURNED
 
   purchaseItems PurchaseItem[]
+  productItems  ProductItem[]
 
   createdBy String?
   createdAt DateTime @default(now())
@@ -231,8 +253,9 @@ model PurchaseItem {
   receivedQty Int    @default(0)
   returnedQty Int    @default(0)
 
-  product  Products @relation(fields: [productId], references: [id])
-  purchase Purchase @relation(fields: [purchaseId], references: [id])
+  product      Products      @relation(fields: [productId], references: [id])
+  purchase     Purchase      @relation(fields: [purchaseId], references: [id])
+  productItems ProductItem[]
 
   @@unique([purchaseId, productId])
 }
@@ -271,9 +294,10 @@ model Sales {
   paymentMode PaymentMode
   invoiceNo   String      @unique
 
-  shop      Shop       @relation(fields: [shopId], references: [id])
-  customer  Customer   @relation(fields: [customerId], references: [id])
-  saleItems SaleItem[]
+  shop         Shop          @relation(fields: [shopId], references: [id])
+  customer     Customer      @relation(fields: [customerId], references: [id])
+  saleItems    SaleItem[]
+  productItems ProductItem[]
 }
 
 model SaleItem {
@@ -283,8 +307,9 @@ model SaleItem {
   quantity  Int
   unitPrice Float
 
-  sale    Sales    @relation(fields: [saleId], references: [id])
-  product Products @relation(fields: [productId], references: [id])
+  sale         Sales         @relation(fields: [saleId], references: [id])
+  product      Products      @relation(fields: [productId], references: [id])
+  productItems ProductItem[]
 }
 
 model Comments {
@@ -294,6 +319,58 @@ model Comments {
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model ProductItem {
+  id          String   @id @default(uuid())
+  productId   String
+  serialNumber String? @unique
+  barcode     String?  @unique
+  assetTag    String?  @unique
+  
+  shopId      String?
+  warehouseId String?
+  
+  status      ItemStatus @default(AVAILABLE)
+  condition   ItemCondition @default(NEW)
+  
+  purchaseId     String?
+  purchaseItemId String?
+  purchasePrice  Float?
+  purchaseDate   DateTime?
+  
+  saleId     String?
+  saleItemId String?
+  salePrice  Float?
+  saleDate   DateTime?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  product     Products      @relation(fields: [productId], references: [id])
+  shop        Shop?         @relation(fields: [shopId], references: [id])
+  warehouse   Warehouses?   @relation(fields: [warehouseId], references: [id])
+  purchase    Purchase?     @relation(fields: [purchaseId], references: [id])
+  purchaseItem PurchaseItem? @relation(fields: [purchaseItemId], references: [id])
+  sale        Sales?        @relation(fields: [saleId], references: [id])
+  saleItem    SaleItem?     @relation(fields: [saleItemId], references: [id])
+  
+  itemHistory ProductItemHistory[]
+}
+
+model ProductItemHistory {
+  id            String   @id @default(uuid())
+  productItemId String
+  action        String
+  fromLocation  String?
+  toLocation    String?
+  fromStatus    ItemStatus?
+  toStatus      ItemStatus?
+  reason        String?
+  performedBy   String?
+  createdAt     DateTime @default(now())
+  
+  productItem ProductItem @relation(fields: [productItemId], references: [id])
 }
 
 model RefreshToken {
