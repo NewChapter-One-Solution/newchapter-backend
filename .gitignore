@@ -7,6 +7,9 @@ yarn-debug.log*
 yarn-error.log*
 package-lock.json
 
+# Ignore all Markdown files
+*.md
+
 # Build outputs
 dist/
 build/
@@ -205,3 +208,4 @@ $RECYCLE.BIN/
 # Backup files
 *.orig
 *.rej
+
